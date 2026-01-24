@@ -83,9 +83,9 @@ uv run serial-stamp generate project.stamp -o output.pdf
 
 ## Configuration Format
 
-Configuration files use the TOML format. Save them with a `.stamp` extension.
+The configuration is defined in a `spec.toml` file using the TOML format. This file resides at the root of your project directory or inside a packed `.stamp` archive.
 
-### Example (`bka.stamp`)
+### Example (`spec.toml`)
 
 ```toml
 stack-size = 5
@@ -100,6 +100,7 @@ margin = 10         # Margin around the page
 template = "N° $no"
 position = [1120, 537]
 size = 24
+ttf = "fonts/Roboto-Medium.ttf"
 color = "blue"
 
 [[params]]
@@ -116,4 +117,5 @@ max = 100
   - `cli.py`: Command-line entry point.
   - `engine.py`: Core logic for image generation and PDF stacking.
   - `models.py`: Data models (Pydantic).
+  - `project.py`: Project management (packed/unpacked modes).
 - `scripts/`: Legacy scripts and utilities.
