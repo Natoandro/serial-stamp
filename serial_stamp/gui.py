@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 
 from serial_stamp.engine import Engine
 from serial_stamp.models import Spec
+from serial_stamp.project import Project
 
 
 class TicketGeneratorApp(tk.Tk):
@@ -20,7 +21,7 @@ class TicketGeneratorApp(tk.Tk):
         self.geometry("1000x700")
 
         # State
-        self.current_spec_path: Optional[Path] = None
+        self.project: Optional[Project] = None
         self.current_spec: Optional[Spec] = None
         self.output_path: Optional[Path] = None
         self.tk_preview_image: Optional[ImageTk.PhotoImage] = None
@@ -148,11 +149,23 @@ class TicketGeneratorApp(tk.Tk):
             filetypes=[("SerialStamp files", "*.stamp"), ("TOML config", "*.toml")]
         )
         if file_path:
-            self.current_spec_path = Path(file_path)
-            self.status_var.set(f"Loaded: {self.current_spec_path.name}")
+            self.status_var.set(f"Loaded: {Path(file_path).name}")
 
             try:
-                self._load_spec_from_file()
+                # Cleanup previous project if exists
+                if self.project:
+                    # Manually handle exit? Or rely on GC/cleanup logic?
+                    # Since Project implements __exit__, we should probably call it manually
+                    # if we are treating it as a long-lived object, or rely on a `close` method.
+                    # Our current Project class assumes __exit__ usage for cleanup.
+                    # We will adapt Project usage here to be persistent.
+                    self.project.__exit__(None, None, None)
+
+                # Initialize new project
+                self.project = Project(file_path)
+                self.project.__enter__()  # Enter context manually to extract files
+
+                self._load_spec_from_project()
                 self.generate_btn.config(state=tk.NORMAL)
 
                 if not self._polling:
@@ -161,26 +174,35 @@ class TicketGeneratorApp(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load config: {e}")
 
-    def _load_spec_from_file(self):
-        if not self.current_spec_path:
+    def _load_spec_from_project(self):
+        if not self.project:
             return
 
-        with open(self.current_spec_path, "rb") as f:
+        with open(self.project.spec_path, "rb") as f:
             data = tomllib.load(f)
 
         self.current_spec = Spec(**data)
-        self.last_mtime = self.current_spec_path.stat().st_mtime
+        # Track mtime of the ROOT path (the zip or the toml), not the extracted spec
+        if self.project.root_path.exists():
+            self.last_mtime = self.project.root_path.stat().st_mtime
 
         self._populate_form()
         self._update_preview()
 
     def _poll_file_changes(self):
-        if self.current_spec_path and self.current_spec_path.exists():
+        if self.project and self.project.root_path.exists():
             try:
-                current_mtime = self.current_spec_path.stat().st_mtime
+                current_mtime = self.project.root_path.stat().st_mtime
                 if current_mtime > self.last_mtime:
+                    # If it's a zip file, we need to re-extract it.
+                    # If it's a folder, we just re-read the spec.
                     print("External change detected, reloading...")
-                    self._load_spec_from_file()
+
+                    # For safety, re-enter context to refresh extracted files if needed
+                    self.project.__exit__(None, None, None)
+                    self.project.__enter__()
+
+                    self._load_spec_from_project()
                     self.status_var.set("Reloaded from disk")
             except OSError:
                 pass
@@ -379,19 +401,20 @@ class TicketGeneratorApp(tk.Tk):
                     ).pack(side=tk.LEFT, padx=5)
 
     def _browse_source_image(self):
-        initial_dir = self.current_spec_path.parent if self.current_spec_path else None
+        initial_dir = self.project.root_path.parent if self.project else None
         filename = filedialog.askopenfilename(
             initialdir=initial_dir, filetypes=[("Images", "*.jpg *.jpeg *.png")]
         )
         if filename:
-            try:
-                p = Path(filename)
-                if self.current_spec_path:
-                    rel = p.relative_to(self.current_spec_path.parent)
-                    self.vars["source_image"].set(str(rel))
-                else:
+            if self.project:
+                try:
+                    # Import asset into project
+                    rel_path = self.project.import_asset(filename)
+                    self.vars["source_image"].set(rel_path)
+                except Exception as e:
+                    print(f"Failed to import asset: {e}")
                     self.vars["source_image"].set(filename)
-            except (ValueError, AttributeError):
+            else:
                 self.vars["source_image"].set(filename)
 
     def _schedule_update(self):
@@ -467,30 +490,33 @@ class TicketGeneratorApp(tk.Tk):
             print(f"Update error: {e}")
 
     def _save_config(self):
-        if not self.current_spec or not self.current_spec_path:
+        if not self.current_spec or not self.project:
             return
 
         try:
+            # 1. Write the Spec TOML to the working directory (temp or real)
             data = self.current_spec.model_dump(by_alias=True, exclude_none=True)
-            with open(self.current_spec_path, "wb") as f:
+            with open(self.project.spec_path, "wb") as f:
                 tomli_w.dump(data, f)
 
+            # 2. Persist changes (re-pack zip if needed)
+            self.project.save()
+
             # Update last_mtime so we don't reload our own save
-            self.last_mtime = self.current_spec_path.stat().st_mtime
+            if self.project.root_path.exists():
+                self.last_mtime = self.project.root_path.stat().st_mtime
         except Exception as e:
             print(f"Autosave failed: {e}")
             self.status_var.set("Autosave failed!")
 
     def _update_preview(self):
-        if not self.current_spec or not self.current_spec_path:
+        if not self.current_spec or not self.project:
             return
 
         try:
-            # Resolve image path
+            # Resolve image path relative to project working dir
             img_path_str = self.current_spec.source_image
-            img_path = Path(img_path_str)
-            if not img_path.is_absolute():
-                img_path = self.current_spec_path.parent / img_path
+            img_path = self.project.work_dir / img_path_str
 
             if not img_path.exists():
                 self.preview_canvas.delete("all")
@@ -543,13 +569,13 @@ class TicketGeneratorApp(tk.Tk):
             )
 
     def generate_pdf(self):
-        if not self.current_spec or not self.current_spec_path:
+        if not self.current_spec or not self.project:
             return
 
         output_filename = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             filetypes=[("PDF files", "*.pdf")],
-            initialfile=f"{self.current_spec_path.stem}-out.pdf",
+            initialfile=f"{self.project.root_path.stem}-out.pdf",
         )
 
         if not output_filename:
@@ -562,23 +588,22 @@ class TicketGeneratorApp(tk.Tk):
 
         # Capture state for thread
         spec = self.current_spec
-        spec_path = self.current_spec_path
+        # We pass the WORKING directory path, so engine can find assets
+        work_dir = self.project.work_dir
         output_path = self.output_path
 
         # Run in thread
         thread = threading.Thread(
-            target=self._run_generation, args=(spec, spec_path, output_path)
+            target=self._run_generation, args=(spec, work_dir, output_path)
         )
         thread.daemon = True
         thread.start()
 
-    def _run_generation(self, spec: Spec, spec_path: Path, output_path: Path):
+    def _run_generation(self, spec: Spec, work_dir: Path, output_path: Path):
         try:
             # Resolve image path again for the engine
             img_path_str = spec.source_image
-            img_path = Path(img_path_str)
-            if not img_path.is_absolute():
-                img_path = spec_path.parent / img_path
+            img_path = work_dir / img_path_str
 
             with Image.open(img_path) as source_image:
                 engine = Engine(spec, output_path, source_image)
