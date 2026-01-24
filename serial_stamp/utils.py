@@ -1,10 +1,12 @@
-from typing_extensions import Iterable, Generator, Tuple, Any
+from typing import Any
+
+from typing_extensions import Generator, Iterable, Tuple
 
 
 def cartesian_product(
-    *iterables: Iterable[str | tuple[str, ...]],
+    *iterables: Iterable[Any],
     materialize: bool = False,
-) -> Generator[Tuple[str, ...], None, None]:
+) -> Generator[Tuple[Any, ...], None, None]:
     if not iterables:
         return
 
@@ -29,11 +31,11 @@ def cartesian_product(
                 else:
                     yield (x,) + y
     else:
-        first = iter(iterables[0])
-        rest = iterables[1:]
+        first_iter = iter(iterables[0])
+        rest_iter = iterables[1:]
 
-        for x in first:
-            for y in cartesian_product(*rest):
+        for x in first_iter:
+            for y in cartesian_product(*rest_iter):
                 if isinstance(x, tuple):
                     yield x + y
                 else:

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from PIL import Image, ImageDraw
-from PIL.ImageFile import ImageFile
 
 from serial_stamp.models import Spec
 from serial_stamp.utils import cartesian_product, replace_vars
@@ -15,13 +14,13 @@ from serial_stamp.utils import cartesian_product, replace_vars
 class Engine:
     spec: Spec
     output: Path
-    source_image: ImageFile
+    source_image: Image.Image
 
     def _create_template(self) -> Image.Image:
         template = Image.new(
             "RGB",
             (self.source_image.width, self.source_image.height),
-            self.spec.output.background_color,
+            self.spec.output.background_color,  # type: ignore
         )
 
         template.paste(

@@ -1,9 +1,8 @@
+from typing import Any, Literal
+
 from PIL import ImageFont
 from pydantic import BaseModel, Field
-from typing import Literal, Any
-
 from pydantic.fields import cached_property
-
 
 Color = tuple[int, int, int] | tuple[int, int, int, int] | str
 
@@ -61,13 +60,14 @@ class Text(BaseModel):
 
     @cached_property
     def font(self):
+        size = int(self.size)
         if self.ttf is not None:
-            return ImageFont.truetype(self.ttf, self.size)
+            return ImageFont.truetype(self.ttf, size)
 
         try:
-            return ImageFont.truetype("Arial.ttf", self.size)
+            return ImageFont.truetype("Arial.ttf", size)
         except OSError:
-            return ImageFont.load_default(self.size)
+            return ImageFont.load_default(size)
 
 
 class IntParam(BaseModel):
@@ -138,7 +138,7 @@ class IntRangeParam(BaseModel):
 
 
 class Output(BaseModel):
-    background_color: str | float | tuple[float, ...] = Field(
+    background_color: Color | float | tuple[float, ...] = Field(
         alias="background-color", default="white"
     )
 
@@ -148,9 +148,9 @@ class Spec(BaseModel):
     source_image: str = Field(alias="source-image")
     layout: Layout
     texts: list[Text]
-    params: list[IntParam | StringParam | IntRangeParam | StringArrayParam] | None = (
-        Field(default=None)
-    )
+    params: list[
+        IntParam | StringParam | IntRangeParam | StringArrayParam
+    ] | None = Field(default=None)
     table: list[dict[str, Any]] | None = Field(default=None)
     output: Output = Field(default_factory=Output)
     background: Color = (255, 255, 255)

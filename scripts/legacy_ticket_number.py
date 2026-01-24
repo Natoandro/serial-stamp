@@ -1,8 +1,9 @@
-from PIL import Image, ImageFont, ImageDraw
-from typing import Callable, Optional, List, Literal, Tuple
 import argparse
 from dataclasses import dataclass
 from functools import reduce
+from typing import List, Literal, Optional, Tuple
+
+from PIL import Image, ImageDraw, ImageFont
 
 font_size = 30
 font = ImageFont.truetype("fonts/Roboto-Medium.ttf", font_size)
@@ -99,7 +100,7 @@ class Param:
                 case "type":
                     if val != "number":
                         raise Exception(f"Unknown type '{val}'")
-                    self.type = val
+                    self.type = "number"
                 case "value":
                     [start, end] = val.split("-")
                     end = start if end is None else end

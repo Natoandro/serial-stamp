@@ -63,10 +63,22 @@ uv run serial-stamp-gui
 
 ### Command Line Interface
 
-You can also run the generator directly from the command line if you already have a configuration file.
-
+**Initialize a New Project**
+Create a folder structure with a template spec:
 ```bash
-uv run serial-stamp config.stamp -o output.pdf
+uv run serial-stamp init my_project
+```
+
+**Pack a Project**
+Bundle a folder into a portable `.stamp` file:
+```bash
+uv run serial-stamp pack my_project -o project.stamp
+```
+
+**Generate PDF**
+Generate output from a `.stamp` file, `.toml` config, or folder:
+```bash
+uv run serial-stamp generate project.stamp -o output.pdf
 ```
 
 ## Configuration Format

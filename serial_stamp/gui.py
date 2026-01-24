@@ -296,7 +296,7 @@ class TicketGeneratorApp(tk.Tk):
         if not self.current_spec:
             return
 
-        self.vars = {}  # Store TK vars
+        self.vars: dict[str, tk.Variable] = {}  # Store TK vars
 
         def add_separator():
             ttk.Frame(self.scrollable_frame, height=2, style="TFrame").pack(

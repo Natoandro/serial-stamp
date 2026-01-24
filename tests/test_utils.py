@@ -1,8 +1,6 @@
 import sys
 from io import StringIO
-from typing import Iterator, List, Tuple
-
-import pytest
+from typing import Any, Iterable, List, Tuple
 
 from serial_stamp.utils import cartesian_product, replace_vars
 
@@ -167,7 +165,7 @@ class TestIterCartesianProduct:
         """Test that results match itertools.product."""
         import itertools
 
-        test_cases = [
+        test_cases: List[Tuple[Iterable[Any], ...]] = [
             ([1, 2], ["a", "b"]),
             ([1, 2, 3], ["x"], [True, False]),
             (range(2), range(3)),
@@ -278,7 +276,7 @@ class TestReplaceVars:
     def test_empty_vars_dict(self):
         """Test with empty variables dictionary."""
         template = "No variables here"
-        vars_dict = {}
+        vars_dict: dict[str, str] = {}
         result = replace_vars(template, vars_dict)
         assert result == "No variables here"
 
