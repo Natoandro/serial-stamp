@@ -16,7 +16,7 @@ class TicketGeneratorApp(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("Ticket Generator")
+        self.title("SerialStamp")
         self.geometry("1000x700")
 
         # State
@@ -144,7 +144,9 @@ class TicketGeneratorApp(tk.Tk):
         self.config(menu=menubar)
 
     def load_config(self):
-        file_path = filedialog.askopenfilename(filetypes=[("TOML files", "*.toml")])
+        file_path = filedialog.askopenfilename(
+            filetypes=[("SerialStamp files", "*.stamp"), ("TOML config", "*.toml")]
+        )
         if file_path:
             self.current_spec_path = Path(file_path)
             self.status_var.set(f"Loaded: {self.current_spec_path.name}")
