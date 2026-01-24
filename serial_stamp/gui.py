@@ -1,3 +1,4 @@
+import tempfile
 import threading
 import tkinter as tk
 import tomllib
@@ -206,7 +207,7 @@ class TicketGeneratorApp(tk.Tk):
                     self.project.__exit__(None, None, None)
 
                 # 1. Create temporary directory structure
-                with tomli_w.tempfile.TemporaryDirectory() as tmp:
+                with tempfile.TemporaryDirectory() as tmp:
                     # init_project creates assets/ and spec.toml in 'tmp'
                     init_project(tmp)
                     # 2. Pack it to the destination .stamp file
