@@ -5,6 +5,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
+import tomli_w
 from PIL import Image, ImageTk
 
 from tiknum.engine import Engine
@@ -24,6 +25,8 @@ class TicketGeneratorApp(tk.Tk):
         self.output_path: Optional[Path] = None
         self.tk_preview_image: Optional[ImageTk.PhotoImage] = None
         self._debounce_timer: Optional[str] = None
+        self.last_mtime: float = 0.0
+        self._polling = False
 
         # UI Setup
         self._setup_menu()
@@ -147,14 +150,40 @@ class TicketGeneratorApp(tk.Tk):
             self.status_var.set(f"Loaded: {self.current_spec_path.name}")
 
             try:
-                with open(self.current_spec_path, "rb") as f:
-                    data = tomllib.load(f)
-                self.current_spec = Spec(**data)
-                self._populate_form()
-                self._update_preview()
+                self._load_spec_from_file()
                 self.generate_btn.config(state=tk.NORMAL)
+
+                if not self._polling:
+                    self._polling = True
+                    self._poll_file_changes()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load config: {e}")
+
+    def _load_spec_from_file(self):
+        if not self.current_spec_path:
+            return
+
+        with open(self.current_spec_path, "rb") as f:
+            data = tomllib.load(f)
+
+        self.current_spec = Spec(**data)
+        self.last_mtime = self.current_spec_path.stat().st_mtime
+
+        self._populate_form()
+        self._update_preview()
+
+    def _poll_file_changes(self):
+        if self.current_spec_path and self.current_spec_path.exists():
+            try:
+                current_mtime = self.current_spec_path.stat().st_mtime
+                if current_mtime > self.last_mtime:
+                    print("External change detected, reloading...")
+                    self._load_spec_from_file()
+                    self.status_var.set("Reloaded from disk")
+            except OSError:
+                pass
+
+        self.after(1000, self._poll_file_changes)
 
     def _populate_form(self):
         # Clear existing
@@ -422,13 +451,29 @@ class TicketGeneratorApp(tk.Tk):
                             param.max = self.vars[f"param_{i}_max"].get()
 
             self._update_preview()
-            self.status_var.set("Preview Updated")
+            self._save_config()
+            self.status_var.set("Saved & Preview Updated")
         except tk.TclError:
             # Occurs when inputs are empty/invalid (e.g. integer fields)
             pass
         except Exception as e:
             # Fail silently to console for other errors to avoid popup spam
             print(f"Update error: {e}")
+
+    def _save_config(self):
+        if not self.current_spec or not self.current_spec_path:
+            return
+
+        try:
+            data = self.current_spec.model_dump(by_alias=True, exclude_none=True)
+            with open(self.current_spec_path, "wb") as f:
+                tomli_w.dump(data, f)
+
+            # Update last_mtime so we don't reload our own save
+            self.last_mtime = self.current_spec_path.stat().st_mtime
+        except Exception as e:
+            print(f"Autosave failed: {e}")
+            self.status_var.set("Autosave failed!")
 
     def _update_preview(self):
         if not self.current_spec or not self.current_spec_path:
