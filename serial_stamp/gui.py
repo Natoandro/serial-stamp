@@ -8,8 +8,8 @@ from typing import Optional
 import tomli_w
 from PIL import Image, ImageTk
 
-from tiknum.engine import Engine
-from tiknum.models import Spec
+from serial_stamp.engine import Engine
+from serial_stamp.models import Spec
 
 
 class TicketGeneratorApp(tk.Tk):
@@ -608,6 +608,10 @@ class TicketGeneratorApp(tk.Tk):
             messagebox.showerror("Error", f"Generation failed:\n{error_msg}")
 
 
-if __name__ == "__main__":
+def main():
     app = TicketGeneratorApp()
     app.mainloop()
+
+
+if __name__ == "__main__":
+    main()

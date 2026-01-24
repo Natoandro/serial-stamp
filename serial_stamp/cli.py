@@ -1,10 +1,11 @@
 import argparse
-from pathlib import Path
 import tomllib
+from pathlib import Path
 
-from tiknum.engine import Engine
-from tiknum.models import Spec
 from PIL import Image
+
+from serial_stamp.engine import Engine
+from serial_stamp.models import Spec
 
 
 def main():

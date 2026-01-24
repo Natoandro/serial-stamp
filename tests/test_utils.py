@@ -1,8 +1,10 @@
-import pytest
-from typing import List, Tuple, Iterator
-from tiknum.utils import cartesian_product, replace_vars
-from io import StringIO
 import sys
+from io import StringIO
+from typing import Iterator, List, Tuple
+
+import pytest
+
+from serial_stamp.utils import cartesian_product, replace_vars
 
 
 class TestIterCartesianProduct:

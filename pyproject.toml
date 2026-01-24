@@ -1,5 +1,5 @@
 [project]
-name = "image-manip"
+name = "serial-stamp"
 version = "0.1.0"
 description = ""
 readme = "README.md"
@@ -11,6 +11,10 @@ dependencies = [
 
 [[project.authors]]
 name = "Natoandro"
+
+[project.scripts]
+serial-stamp = "serial_stamp.cli:main"
+serial-stamp-gui = "serial_stamp.gui:main"
 
 [dependency-groups]
 dev = [

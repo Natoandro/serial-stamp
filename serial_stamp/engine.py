@@ -7,8 +7,8 @@ from typing import Any, Callable, Optional
 from PIL import Image, ImageDraw
 from PIL.ImageFile import ImageFile
 
-from tiknum.models import Spec
-from tiknum.utils import cartesian_product, replace_vars
+from serial_stamp.models import Spec
+from serial_stamp.utils import cartesian_product, replace_vars
 
 
 @dataclass
