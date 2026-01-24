@@ -16,16 +16,35 @@
 
 ## Installation
 
-Ensure you have Python 3.11+ installed.
+Ensure you have [uv](https://docs.astral.sh/uv/) installed.
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd image_manip
+git clone https://github.com/Natoandro/serial-stamp.git
+cd serial-stamp
 
 # Install dependencies
-pip install pillow pydantic tomli-w
+uv sync
 ```
+
+## Development
+
+### Setup
+
+1.  Install dependencies (including dev tools):
+    ```bash
+    uv sync
+    ```
+
+2.  Install git hooks:
+    ```bash
+    uv run pre-commit install
+    ```
+
+### Code Quality
+
+-   **Linting/Formatting**: `uv run ruff check .` / `uv run ruff format .`
+-   **Type Checking**: `uv run mypy .`
 
 ## Usage
 
@@ -34,7 +53,7 @@ pip install pillow pydantic tomli-w
 Run the GUI to visually edit your configuration and generate PDFs.
 
 ```bash
-python -m serial_stamp.gui
+uv run serial-stamp-gui
 ```
 
 1.  **Load Config**: Open an existing `.stamp` or `.toml` file (examples included in the repo).
@@ -47,7 +66,7 @@ python -m serial_stamp.gui
 You can also run the generator directly from the command line if you already have a configuration file.
 
 ```bash
-python -m serial_stamp.cli config.stamp -o output.pdf
+uv run serial-stamp config.stamp -o output.pdf
 ```
 
 ## Configuration Format
