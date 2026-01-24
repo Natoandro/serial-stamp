@@ -543,7 +543,7 @@ class TicketGeneratorApp(tk.Tk):
                             self.vars[f"text_{i}_x"].get(),
                             self.vars[f"text_{i}_y"].get(),
                         )
-                        text_item.size = self.vars[f"text_{i}_size"].get()
+                        text_item.size = int(self.vars[f"text_{i}_size"].get())
 
                         # Invalidate cached font property so it reloads with new size
                         if "font" in text_item.__dict__:
@@ -609,7 +609,7 @@ class TicketGeneratorApp(tk.Tk):
             img_path_str = self.current_spec.source_image
             img_path = self.project.work_dir / img_path_str
 
-            if not img_path.exists():
+            if not img_path.exists() or img_path.is_dir():
                 self.preview_canvas.delete("all")
                 self.preview_text = self.preview_canvas.create_text(
                     200,
