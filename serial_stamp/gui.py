@@ -10,7 +10,7 @@ from PIL import Image, ImageTk
 
 from serial_stamp.engine import Engine
 from serial_stamp.models import Spec
-from serial_stamp.project import Project
+from serial_stamp.project import Project, init_project, pack_project
 
 
 class TicketGeneratorApp(tk.Tk):
@@ -19,6 +19,9 @@ class TicketGeneratorApp(tk.Tk):
 
         self.title("SerialStamp")
         self.geometry("1000x700")
+
+        # Style Configuration
+        self._setup_style()
 
         # State
         self.project: Optional[Project] = None
@@ -33,32 +36,63 @@ class TicketGeneratorApp(tk.Tk):
         self._setup_menu()
         self._setup_layout()
 
-    def _setup_layout(self):
-        # Main Container
-        main_paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        main_paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+    def _setup_style(self):
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass  # Fallback to default if unavailable
 
-        # Left Panel (Config)
-        self.left_frame = ttk.Frame(main_paned, width=400)
+        # Colors
+        bg_color = "#f0f0f0"
+        self.configure(bg=bg_color)
+
+        # Fonts
+        header_font = ("Segoe UI", 12, "bold")
+        normal_font = ("Segoe UI", 10)
+
+        style.configure("TFrame", background=bg_color)
+        style.configure("TLabel", background=bg_color, font=normal_font)
+        style.configure("Header.TLabel", font=header_font, foreground="#333")
+        style.configure(
+            "TButton", font=normal_font, padding=6, borderwidth=0, focuscolor="none"
+        )
+        style.map(
+            "TButton",
+            background=[("active", "#e1e1e1"), ("!disabled", "#ffffff")],
+            foreground=[("!disabled", "#333")],
+        )
+        style.configure("TLabelframe", background=bg_color, padding=10)
+        style.configure("TLabelframe.Label", background=bg_color, font=header_font)
+        style.configure("TEntry", padding=4)
+        style.configure("Horizontal.TProgressbar", background="#4CAF50")
+
+    def _setup_layout(self):
+        # Main Container with padding
+        main_paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        main_paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Left Panel (Config) - Increased initial width
+        self.left_frame = ttk.Frame(main_paned, width=450)
         main_paned.add(self.left_frame, weight=1)
 
         self._setup_config_panel()
 
         # Right Panel (Preview)
         self.right_frame = ttk.Frame(main_paned)
-        main_paned.add(self.right_frame, weight=2)
+        main_paned.add(self.right_frame, weight=3)
 
         self._setup_preview_panel()
 
         # Bottom Bar (Status & Actions)
         self.bottom_frame = ttk.Frame(self)
-        self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=5)
+        self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
 
         self._setup_bottom_bar()
 
     def _setup_config_panel(self):
         # Create a canvas + scrollbar for scrolling the form
-        canvas = tk.Canvas(self.left_frame)
+        canvas = tk.Canvas(self.left_frame, highlightthickness=0)
         scrollbar = ttk.Scrollbar(
             self.left_frame, orient="vertical", command=canvas.yview
         )
@@ -69,32 +103,46 @@ class TicketGeneratorApp(tk.Tk):
         )
 
         canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.configure(yscrollcommand=scrollbar.set, bg="#f0f0f0")
 
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
         # Placeholder content
         ttk.Label(
-            self.scrollable_frame, text="Configuration", font=("Arial", 14, "bold")
-        ).pack(pady=10, anchor="w", padx=10)
+            self.scrollable_frame, text="Configuration", style="Header.TLabel"
+        ).pack(pady=20, anchor="w", padx=15)
         ttk.Label(
             self.scrollable_frame,
             text="(Form fields will appear here after loading a config)",
-            font=("Arial", 10, "italic"),
-        ).pack(pady=5, anchor="w", padx=10)
+            font=("Segoe UI", 10, "italic"),
+            foreground="#666",
+        ).pack(pady=5, anchor="w", padx=15)
 
     def _setup_preview_panel(self):
-        ttk.Label(self.right_frame, text="Preview", font=("Arial", 14, "bold")).pack(
-            pady=10
+        header_frame = ttk.Frame(self.right_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(header_frame, text="Preview", style="Header.TLabel").pack(
+            side=tk.LEFT
         )
 
-        self.preview_canvas = tk.Canvas(self.right_frame, bg="gray")
-        self.preview_canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Container for canvas with border
+        canvas_container = tk.Frame(self.right_frame, bg="#ccc", padx=1, pady=1)
+        canvas_container.pack(fill=tk.BOTH, expand=True)
+
+        self.preview_canvas = tk.Canvas(
+            canvas_container, bg="#e0e0e0", highlightthickness=0
+        )
+        self.preview_canvas.pack(fill=tk.BOTH, expand=True)
 
         # Placeholder text in canvas
         self.preview_text = self.preview_canvas.create_text(
-            200, 200, text="No Preview Available", fill="white", font=("Arial", 12)
+            200,
+            200,
+            text="No Project Loaded\nUse File > New or Open",
+            fill="#666",
+            font=("Segoe UI", 12),
+            justify="center",
         )
 
         # Handle resize centering
@@ -138,11 +186,41 @@ class TicketGeneratorApp(tk.Tk):
     def _setup_menu(self):
         menubar = tk.Menu(self)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Open Config...", command=self.load_config)
+        file_menu.add_command(label="New Project...", command=self.new_project)
+        file_menu.add_command(label="Open Project...", command=self.load_config)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
         menubar.add_cascade(label="File", menu=file_menu)
         self.config(menu=menubar)
+
+    def new_project(self):
+        file_path = filedialog.asksaveasfilename(
+            title="Create New Project",
+            defaultextension=".stamp",
+            filetypes=[("SerialStamp Project", "*.stamp")],
+        )
+        if file_path:
+            try:
+                # cleanup current
+                if self.project:
+                    self.project.__exit__(None, None, None)
+
+                # 1. Create temporary directory structure
+                with tomli_w.tempfile.TemporaryDirectory() as tmp:
+                    # init_project creates assets/ and spec.toml in 'tmp'
+                    init_project(tmp)
+                    # 2. Pack it to the destination .stamp file
+                    pack_project(tmp, file_path)
+
+                # 3. Load the new project
+                self.project = Project(file_path)
+                self.project.__enter__()
+                self._load_spec_from_project()
+                self.generate_btn.config(state=tk.NORMAL)
+                self.status_var.set(f"Created: {Path(file_path).name}")
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to create project: {e}")
 
     def load_config(self):
         file_path = filedialog.askopenfilename(
@@ -217,53 +295,54 @@ class TicketGeneratorApp(tk.Tk):
         if not self.current_spec:
             return
 
-        # Helper for sections
-        def add_section_label(text):
-            ttk.Label(
-                self.scrollable_frame, text=text, font=("Arial", 11, "bold")
-            ).pack(pady=(15, 5), anchor="w", padx=5)
-
         self.vars = {}  # Store TK vars
+
+        def add_separator():
+            ttk.Frame(self.scrollable_frame, height=2, style="TFrame").pack(
+                fill=tk.X, pady=10
+            )
 
         def on_change(*args):
             self._schedule_update()
 
         # --- General ---
-        add_section_label("General Settings")
+        gen_frame = ttk.LabelFrame(self.scrollable_frame, text="General Settings")
+        gen_frame.pack(fill=tk.X, padx=15, pady=(20, 10))
 
         # Source Image
         self.vars["source_image"] = tk.StringVar(value=self.current_spec.source_image)
         self.vars["source_image"].trace_add("write", on_change)
 
-        f = ttk.Frame(self.scrollable_frame)
-        f.pack(fill=tk.X, padx=5, pady=2)
+        f = ttk.Frame(gen_frame)
+        f.pack(fill=tk.X, padx=5, pady=5)
         ttk.Label(f, text="Source Image", width=15).pack(side=tk.LEFT)
         ttk.Entry(f, textvariable=self.vars["source_image"]).pack(
-            side=tk.LEFT, fill=tk.X, expand=True
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5)
         )
-        ttk.Button(f, text="...", width=3, command=self._browse_source_image).pack(
-            side=tk.LEFT, padx=5
+        ttk.Button(f, text="Browse...", command=self._browse_source_image).pack(
+            side=tk.LEFT
         )
 
         # Stack Size
         self.vars["stack_size"] = tk.IntVar(value=self.current_spec.stack_size)
         self.vars["stack_size"].trace_add("write", on_change)
 
-        f = ttk.Frame(self.scrollable_frame)
-        f.pack(fill=tk.X, padx=5, pady=2)
+        f = ttk.Frame(gen_frame)
+        f.pack(fill=tk.X, padx=5, pady=5)
         ttk.Label(f, text="Stack Size", width=15).pack(side=tk.LEFT)
         ttk.Entry(f, textvariable=self.vars["stack_size"]).pack(
             side=tk.LEFT, fill=tk.X, expand=True
         )
 
         # --- Layout ---
-        add_section_label("Layout")
+        layout_frame = ttk.LabelFrame(self.scrollable_frame, text="Layout")
+        layout_frame.pack(fill=tk.X, padx=15, pady=10)
 
         # Grid Size
         layout = self.current_spec.layout
 
-        grid_frame = ttk.Frame(self.scrollable_frame)
-        grid_frame.pack(fill=tk.X, padx=5, pady=2)
+        grid_frame = ttk.Frame(layout_frame)
+        grid_frame.pack(fill=tk.X, padx=5, pady=5)
         ttk.Label(grid_frame, text="Grid Size (WxH)", width=15).pack(side=tk.LEFT)
 
         self.vars["grid_w"] = tk.IntVar(value=layout.grid_size[0])
@@ -280,8 +359,8 @@ class TicketGeneratorApp(tk.Tk):
         )
 
         # Gap
-        gap_frame = ttk.Frame(self.scrollable_frame)
-        gap_frame.pack(fill=tk.X, padx=5, pady=2)
+        gap_frame = ttk.Frame(layout_frame)
+        gap_frame.pack(fill=tk.X, padx=5, pady=5)
         ttk.Label(gap_frame, text="Gap (X, Y)", width=15).pack(side=tk.LEFT)
 
         self.vars["gap_x"] = tk.DoubleVar(value=layout.gap_x)
@@ -298,9 +377,9 @@ class TicketGeneratorApp(tk.Tk):
         )
 
         # Margins
-        margin_frame = ttk.Frame(self.scrollable_frame)
-        margin_frame.pack(fill=tk.X, padx=5, pady=2)
-        ttk.Label(margin_frame, text="Margins (T,R,B,L)", width=15).pack(side=tk.LEFT)
+        margin_frame = ttk.Frame(layout_frame)
+        margin_frame.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Label(margin_frame, text="Margins (TRBL)", width=15).pack(side=tk.LEFT)
 
         self.vars["margin_t"] = tk.DoubleVar(value=layout.margin_top)
         self.vars["margin_r"] = tk.DoubleVar(value=layout.margin_right)
@@ -318,14 +397,19 @@ class TicketGeneratorApp(tk.Tk):
 
         # --- Texts ---
         if self.current_spec.texts:
-            add_section_label("Texts")
+            add_separator()
+            text_header = ttk.Label(
+                self.scrollable_frame, text="Text Elements", style="Header.TLabel"
+            )
+            text_header.pack(fill=tk.X, padx=15, pady=(10, 5))
+
             for i, text_item in enumerate(self.current_spec.texts):
-                frame = ttk.LabelFrame(self.scrollable_frame, text=f"Text #{i + 1}")
-                frame.pack(fill=tk.X, padx=5, pady=5)
+                frame = ttk.LabelFrame(self.scrollable_frame, text=f"Element #{i + 1}")
+                frame.pack(fill=tk.X, padx=15, pady=5)
 
                 # Template
                 t_frame = ttk.Frame(frame)
-                t_frame.pack(fill=tk.X, pady=2)
+                t_frame.pack(fill=tk.X, pady=5)
                 ttk.Label(t_frame, text="Template", width=10).pack(side=tk.LEFT)
                 self.vars[f"text_{i}_template"] = tk.StringVar(value=text_item.template)
                 self.vars[f"text_{i}_template"].trace_add("write", on_change)
@@ -335,7 +419,7 @@ class TicketGeneratorApp(tk.Tk):
 
                 # Position & Size
                 ps_frame = ttk.Frame(frame)
-                ps_frame.pack(fill=tk.X, pady=2)
+                ps_frame.pack(fill=tk.X, pady=5)
 
                 ttk.Label(ps_frame, text="Pos (x,y)", width=10).pack(side=tk.LEFT)
                 self.vars[f"text_{i}_x"] = tk.DoubleVar(value=text_item.position[0])
@@ -360,7 +444,7 @@ class TicketGeneratorApp(tk.Tk):
 
                 # Color
                 c_frame = ttk.Frame(frame)
-                c_frame.pack(fill=tk.X, pady=2)
+                c_frame.pack(fill=tk.X, pady=5)
                 ttk.Label(c_frame, text="Color", width=10).pack(side=tk.LEFT)
                 self.vars[f"text_{i}_color"] = tk.StringVar(value=str(text_item.color))
                 self.vars[f"text_{i}_color"].trace_add("write", on_change)
@@ -375,25 +459,31 @@ class TicketGeneratorApp(tk.Tk):
                 # Only support IntRangeParam (has min/max)
                 if hasattr(param, "min") and hasattr(param, "max"):
                     if not has_params_header:
-                        add_section_label("Parameters")
+                        add_separator()
+                        p_header = ttk.Label(
+                            self.scrollable_frame,
+                            text="Parameters",
+                            style="Header.TLabel",
+                        )
+                        p_header.pack(fill=tk.X, padx=15, pady=(10, 5))
                         has_params_header = True
 
                     frame = ttk.LabelFrame(
-                        self.scrollable_frame, text=f"Param: {param.name}"
+                        self.scrollable_frame, text=f"Variable: ${param.name}"
                     )
-                    frame.pack(fill=tk.X, padx=5, pady=5)
+                    frame.pack(fill=tk.X, padx=15, pady=5)
 
                     p_frame = ttk.Frame(frame)
-                    p_frame.pack(fill=tk.X, pady=2)
+                    p_frame.pack(fill=tk.X, pady=5)
 
-                    ttk.Label(p_frame, text="Min").pack(side=tk.LEFT)
+                    ttk.Label(p_frame, text="Range Min").pack(side=tk.LEFT)
                     self.vars[f"param_{i}_min"] = tk.IntVar(value=param.min)
                     self.vars[f"param_{i}_min"].trace_add("write", on_change)
                     ttk.Entry(
                         p_frame, textvariable=self.vars[f"param_{i}_min"], width=8
-                    ).pack(side=tk.LEFT, padx=5)
+                    ).pack(side=tk.LEFT, padx=(5, 15))
 
-                    ttk.Label(p_frame, text="Max").pack(side=tk.LEFT)
+                    ttk.Label(p_frame, text="Range Max").pack(side=tk.LEFT)
                     self.vars[f"param_{i}_max"] = tk.IntVar(value=param.max)
                     self.vars[f"param_{i}_max"].trace_add("write", on_change)
                     ttk.Entry(
