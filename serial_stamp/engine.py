@@ -20,7 +20,7 @@ class Engine:
         template = Image.new(
             "RGB",
             (self.source_image.width, self.source_image.height),
-            self.spec.output.background_color,  # type: ignore
+            self.spec.output.background_color,
         )
 
         template.paste(

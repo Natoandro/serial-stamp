@@ -55,19 +55,18 @@ class Text(BaseModel):
     template: str
     position: tuple[float, float]
     ttf: str | None = None
-    size: float = 16
+    size: int = 16
     color: Color = (0, 0, 0)
 
     @cached_property
     def font(self):
-        size = int(self.size)
         if self.ttf is not None:
-            return ImageFont.truetype(self.ttf, size)
+            return ImageFont.truetype(self.ttf, self.size)
 
         try:
-            return ImageFont.truetype("Arial.ttf", size)
+            return ImageFont.truetype("Arial.ttf", self.size)
         except OSError:
-            return ImageFont.load_default(size)
+            return ImageFont.load_default(self.size)
 
 
 class IntParam(BaseModel):
@@ -138,9 +137,7 @@ class IntRangeParam(BaseModel):
 
 
 class Output(BaseModel):
-    background_color: Color | float | tuple[float, ...] = Field(
-        alias="background-color", default="white"
-    )
+    background_color: Color = Field(alias="background-color", default="white")
 
 
 class Spec(BaseModel):
