@@ -1,6 +1,6 @@
 # SerialStamp
 
-**SerialStamp** (formerly TikNum) is a tool for adding iterative numbers, serial codes, or dynamic text to images and stacking them into printable PDF pages. It is ideal for generating tickets, vouchers, invitations, and other serialized documents.
+**SerialStamp** is a tool for adding iterative numbers, serial codes, or dynamic text to images and stacking them into printable PDF pages. It is ideal for generating tickets, vouchers, invitations, and other serialized documents.
 
 ## Features
 
