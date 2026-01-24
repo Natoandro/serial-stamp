@@ -429,6 +429,10 @@ class TicketGeneratorApp(tk.Tk):
                         )
                         text_item.size = self.vars[f"text_{i}_size"].get()
 
+                        # Invalidate cached font property so it reloads with new size
+                        if "font" in text_item.__dict__:
+                            del text_item.__dict__["font"]
+
                         # Handle color (literal eval if looks like tuple)
                         c_str = self.vars[f"text_{i}_color"].get()
                         if c_str.startswith("(") and c_str.endswith(")"):
