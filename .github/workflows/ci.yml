@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ "master", "main" ]
+    branches: ["master", "main"]
   pull_request:
-    branches: [ "master", "main" ]
+    branches: ["master", "main"]
 
 jobs:
   qa:
-    name: Quality Assurance
+    name: Quality Assurance (Python)
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +31,63 @@ jobs:
 
       - name: Run Tests
         run: uv run pytest
+
+  desktop:
+    name: Desktop App Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect desktop app changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --prune --depth=1 origin "${{ github.base_ref }}"
+            BASE_SHA="origin/${{ github.base_ref }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            # When pushing a new branch, github.event.before can be all zeros.
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+            fi
+          fi
+
+          if git diff --name-only "$BASE_SHA" "${{ github.sha }}" | grep -qE '^apps/serial-stamp-desktop/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up pnpm
+        if: steps.changes.outputs.changed == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apps/serial-stamp-desktop/pnpm-lock.yaml
+
+      - name: Frontend check
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          cd apps/serial-stamp-desktop
+          pnpm install --frozen-lockfile
+          pnpm -s check
+
+      - name: Rust toolchain
+        if: steps.changes.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo check (Tauri)
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          cd apps/serial-stamp-desktop/src-tauri
+          cargo check

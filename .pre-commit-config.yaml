@@ -11,7 +11,7 @@ repos:
     rev: v0.1.14
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -19,3 +19,19 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [types-Pillow, pydantic]
+
+  - repo: local
+    hooks:
+      - id: desktop-pnpm-check
+        name: "desktop: pnpm check"
+        entry: sh -c 'cd apps/serial-stamp-desktop && pnpm -s check'
+        language: system
+        pass_filenames: false
+        files: ^apps/serial-stamp-desktop/
+
+      - id: desktop-cargo-check
+        name: "desktop: cargo check (tauri)"
+        entry: sh -c 'cd apps/serial-stamp-desktop/src-tauri && cargo check'
+        language: system
+        pass_filenames: false
+        files: ^apps/serial-stamp-desktop/src-tauri/
