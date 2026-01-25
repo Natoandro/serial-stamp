@@ -1,5 +1,9 @@
 node_modules
 
+# Root .gitignore ignores "lib/" globally; unignore SvelteKit's src/lib for this app.
+!src/lib/
+!src/lib/**/*
+
 # Output
 .output
 .vercel
