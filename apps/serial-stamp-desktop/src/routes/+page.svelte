@@ -1,11 +1,54 @@
 <script lang="ts">
     import { invoke } from "@tauri-apps/api/core";
-    import { defaultSpec, parseSpecToml, serializeSpecToToml, type Spec, type TextSpec } from "$lib/spec/spec";
 
     type WorkspaceInfo = {
         workspaceId: string;
         workspaceDir: string;
     };
+
+    type Color = string | [number, number, number] | [number, number, number, number];
+
+    type Layout = {
+        gridSize: [number, number];
+        gap: number | [number, number];
+        margin: number | [number, number] | [number, number, number, number];
+    };
+
+    type TextSpec = {
+        template: string;
+        position: [number, number];
+        ttf: string | null;
+        size: number;
+        color: Color;
+    };
+
+    type Spec = {
+        stackSize: number;
+        sourceImage: string;
+        layout: Layout;
+        texts: TextSpec[];
+    };
+
+    function defaultSpec(): Spec {
+        return {
+            stackSize: 1,
+            sourceImage: "",
+            layout: {
+                gridSize: [1, 1],
+                gap: 0,
+                margin: 0,
+            },
+            texts: [
+                {
+                    template: "Sample Text",
+                    position: [10, 10],
+                    ttf: null,
+                    size: 24,
+                    color: "black",
+                },
+            ],
+        };
+    }
 
     let creating = false;
     let saving = false;
@@ -26,10 +69,9 @@
 
         try {
             workspace = await invoke<WorkspaceInfo>("workspace_new");
-            const tomlText = await invoke<string>("workspace_get_spec", {
+            spec = await invoke<Spec>("workspace_get_spec_json", {
                 workspaceId: workspace.workspaceId,
             });
-            spec = parseSpecToml(tomlText);
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
         } finally {
@@ -44,10 +86,9 @@
         error = null;
 
         try {
-            const specToml = serializeSpecToToml(spec);
-            await invoke("workspace_set_spec", {
+            await invoke("workspace_set_spec_json", {
                 workspaceId: workspace.workspaceId,
-                specToml,
+                spec,
             });
             dirty = false;
         } catch (e) {
@@ -62,10 +103,9 @@
 
         error = null;
         try {
-            const tomlText = await invoke<string>("workspace_get_spec", {
+            spec = await invoke<Spec>("workspace_get_spec_json", {
                 workspaceId: workspace.workspaceId,
             });
-            spec = parseSpecToml(tomlText);
             dirty = false;
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
