@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs,
+    io::{Read, Write},
     path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
 };
@@ -9,6 +10,8 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Emitter, Manager,
 };
+use walkdir::WalkDir;
+use zip::write::FileOptions;
 
 const DEFAULT_SPEC_TOML: &str = r#"stack-size = 1
 source-image = ""
@@ -83,6 +86,7 @@ impl Default for Layout {
 struct TextSpec {
     template: String,
     position: (f64, f64),
+    #[serde(skip_serializing_if = "Option::is_none")]
     ttf: Option<String>,
     #[serde(default = "default_text_size")]
     size: i32,
@@ -289,6 +293,115 @@ fn workspace_set_spec_json(workspace_id: String, spec: StampSpec) -> Result<(), 
     fs::write(&spec_path, toml_out).map_err(|e| format!("Failed to write spec.toml: {e}"))
 }
 
+fn pack_workspace(workspace_dir: &Path, dest_zip_path: &Path) -> Result<(), String> {
+    let file =
+        fs::File::create(dest_zip_path).map_err(|e| format!("Failed to create zip file: {e}"))?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = FileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored)
+        .unix_permissions(0o755);
+
+    // 1. Add spec.toml
+    let spec_path = workspace_dir.join("spec.toml");
+    if spec_path.exists() {
+        zip.start_file("spec.toml", options)
+            .map_err(|e| format!("Zip error: {e}"))?;
+        let mut f =
+            fs::File::open(&spec_path).map_err(|e| format!("Failed to open spec.toml: {e}"))?;
+        let mut buffer = Vec::new();
+        f.read_to_end(&mut buffer)
+            .map_err(|e| format!("Failed to read spec.toml: {e}"))?;
+        zip.write_all(&buffer)
+            .map_err(|e| format!("Failed to write spec.toml to zip: {e}"))?;
+    }
+
+    // 2. Add assets recursively
+    let assets_dir = workspace_dir.join("assets");
+    if assets_dir.exists() {
+        for entry in WalkDir::new(&assets_dir) {
+            let entry = entry.map_err(|e| format!("WalkDir error: {e}"))?;
+            let path = entry.path();
+            if path.is_file() {
+                let name = path
+                    .strip_prefix(workspace_dir)
+                    .map_err(|e| format!("Path prefix error: {e}"))?
+                    .to_str()
+                    .ok_or("Invalid path encoding")?;
+
+                // On Windows, paths might use backslashes, but zip expects forward slashes.
+                #[cfg(windows)]
+                let name = name.replace('\\', "/");
+
+                zip.start_file(name, options)
+                    .map_err(|e| format!("Zip error for {name}: {e}"))?;
+                let mut f = fs::File::open(path)
+                    .map_err(|e| format!("Failed to open asset {path:?}: {e}"))?;
+                let mut buffer = Vec::new();
+                f.read_to_end(&mut buffer)
+                    .map_err(|e| format!("Failed to read asset {path:?}: {e}"))?;
+                zip.write_all(&buffer)
+                    .map_err(|e| format!("Failed to write asset {path:?} to zip: {e}"))?;
+            }
+        }
+    }
+
+    zip.finish()
+        .map_err(|e| format!("Failed to finish zip: {e}"))?;
+    Ok(())
+}
+
+fn unpack_stamp(app: &AppHandle, stamp_path: &Path) -> Result<WorkspaceInfo, String> {
+    let file = fs::File::open(stamp_path).map_err(|e| format!("Failed to open stamp file: {e}"))?;
+    let mut archive =
+        zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {e}"))?;
+
+    // Create new workspace
+    let workspace_info = workspace_new(app.clone())?;
+    let workspace_dir = PathBuf::from(&workspace_info.workspace_dir);
+
+    for i in 0..archive.len() {
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| format!("Zip error at index {i}: {e}"))?;
+
+        let outpath = match file.enclosed_name() {
+            Some(path) => workspace_dir.join(path),
+            None => continue,
+        };
+
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath)
+                .map_err(|e| format!("Failed to create dir {outpath:?}: {e}"))?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(p)
+                        .map_err(|e| format!("Failed to create dir {p:?}: {e}"))?;
+                }
+            }
+            let mut outfile = fs::File::create(&outpath)
+                .map_err(|e| format!("Failed to create file {outpath:?}: {e}"))?;
+            std::io::copy(&mut file, &mut outfile)
+                .map_err(|e| format!("Failed to extract file {outpath:?}: {e}"))?;
+        }
+    }
+
+    Ok(workspace_info)
+}
+
+#[tauri::command]
+fn project_pack(workspace_id: String, dest_path: String) -> Result<(), String> {
+    let workspace_dir = get_workspace_dir(&workspace_id)?;
+    let dest_path = PathBuf::from(dest_path);
+    pack_workspace(&workspace_dir, &dest_path)
+}
+
+#[tauri::command]
+fn project_unpack(app: tauri::AppHandle, file_path: String) -> Result<WorkspaceInfo, String> {
+    let stamp_path = PathBuf::from(file_path);
+    unpack_stamp(&app, &stamp_path)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Native menu items (Desktop). These are the main actions you requested to live in the native window menu.
@@ -323,6 +436,8 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&file_menu])?;
             app.set_menu(menu)?;
 
+            app.handle().plugin(tauri_plugin_dialog::init())?;
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -338,7 +453,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             workspace_new,
             workspace_get_spec_json,
-            workspace_set_spec_json
+            workspace_set_spec_json,
+            project_pack,
+            project_unpack
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,77 +1,29 @@
 <script lang="ts">
     import { invoke } from "@tauri-apps/api/core";
-
-    type WorkspaceInfo = {
-        workspaceId: string;
-        workspaceDir: string;
-    };
-
-    type Color = string | [number, number, number] | [number, number, number, number];
-
-    type Layout = {
-        gridSize: [number, number];
-        gap: number | [number, number];
-        margin: number | [number, number] | [number, number, number, number];
-    };
-
-    type TextSpec = {
-        template: string;
-        position: [number, number];
-        ttf: string | null;
-        size: number;
-        color: Color;
-    };
-
-    type Spec = {
-        stackSize: number;
-        sourceImage: string;
-        layout: Layout;
-        texts: TextSpec[];
-    };
-
-    function defaultSpec(): Spec {
-        return {
-            stackSize: 1,
-            sourceImage: "",
-            layout: {
-                gridSize: [1, 1],
-                gap: 0,
-                margin: 0,
-            },
-            texts: [
-                {
-                    template: "Sample Text",
-                    position: [10, 10],
-                    ttf: null,
-                    size: 24,
-                    color: "black",
-                },
-            ],
-        };
-    }
+    import { workspaceState } from "$lib/state/workspace.svelte";
+    import { specState, defaultSpec, type TextSpec, type StampSpec } from "$lib/state/spec.svelte";
 
     let creating = false;
     let saving = false;
-
-    let workspace: WorkspaceInfo | null = null;
-
-    let spec: Spec = defaultSpec();
-    let dirty = false;
-
     let error: string | null = null;
 
     async function newWorkspace() {
         creating = true;
         error = null;
-        workspace = null;
-        spec = defaultSpec();
-        dirty = false;
+        // Reset spec to default locally first
+        specState.reset();
 
         try {
-            workspace = await invoke<WorkspaceInfo>("workspace_new");
-            spec = await invoke<Spec>("workspace_get_spec_json", {
-                workspaceId: workspace.workspaceId,
+            const ws = await invoke<{ workspaceId: string; workspaceDir: string }>("workspace_new");
+
+            workspaceState.currentWorkspaceId = ws.workspaceId;
+            workspaceState.currentFilePath = null;
+            workspaceState.isDirty = false;
+
+            const loadedSpec = await invoke<StampSpec>("workspace_get_spec_json", {
+                workspaceId: ws.workspaceId,
             });
+            specState.set(loadedSpec);
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
         } finally {
@@ -80,17 +32,17 @@
     }
 
     async function saveSpec() {
-        if (!workspace) return;
+        if (!workspaceState.currentWorkspaceId) return;
 
         saving = true;
         error = null;
 
         try {
             await invoke("workspace_set_spec_json", {
-                workspaceId: workspace.workspaceId,
-                spec,
+                workspaceId: workspaceState.currentWorkspaceId,
+                spec: specState.current,
             });
-            dirty = false;
+            workspaceState.isDirty = false;
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
         } finally {
@@ -99,21 +51,22 @@
     }
 
     async function reloadSpec() {
-        if (!workspace) return;
+        if (!workspaceState.currentWorkspaceId) return;
 
         error = null;
         try {
-            spec = await invoke<Spec>("workspace_get_spec_json", {
-                workspaceId: workspace.workspaceId,
+            const loadedSpec = await invoke<StampSpec>("workspace_get_spec_json", {
+                workspaceId: workspaceState.currentWorkspaceId,
             });
-            dirty = false;
+            specState.set(loadedSpec);
+            workspaceState.isDirty = false;
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
         }
     }
 
     function markDirty() {
-        dirty = true;
+        workspaceState.isDirty = true;
     }
 
     function setNumTuple2(
@@ -123,44 +76,42 @@
         textIndex?: number,
     ) {
         if (path === "layout.gridSize") {
-            const curr = spec.layout.gridSize;
-            spec.layout.gridSize = index === 0 ? [value, curr[1]] : [curr[0], value];
-            markDirty();
-            return;
+            const curr = specState.current.layout["grid-size"];
+            if (index === 0) specState.current.layout["grid-size"] = [value, curr[1]];
+            else specState.current.layout["grid-size"] = [curr[0], value];
         }
         if (path === "texts.position" && typeof textIndex === "number") {
-            const t = spec.texts[textIndex];
-            if (!t) return;
-            const curr = t.position;
-            t.position = index === 0 ? [value, curr[1]] : [curr[0], value];
-            markDirty();
+            const t = specState.current.texts[textIndex];
+            if (t) {
+                const curr = t.position;
+                if (index === 0) t.position = [value, curr[1]];
+                else t.position = [curr[0], value];
+            }
         }
+        markDirty();
     }
 
     function setGap(index: number, value: number) {
-        const g = spec.layout.gap;
-
-        // If gap is a single number, keep it as a single number when both axes are meant to match.
-        // Since the UI edits x/y independently, switching to a tuple on first edit is fine.
+        const g = specState.current.layout.gap;
+        let next: [number, number];
         if (typeof g === "number") {
-            spec.layout.gap = index === 0 ? [value, g] : [g, value];
+            next = index === 0 ? [value, g] : [g, value];
         } else {
-            const curr = g;
-            spec.layout.gap = index === 0 ? [value, curr[1]] : [curr[0], value];
+            next = index === 0 ? [value, g[1]] : [g[0], value];
         }
-
+        specState.current.layout.gap = next;
         markDirty();
     }
 
     function setMargin4(index: number, value: number) {
-        const m = spec.layout.margin;
+        const m = specState.current.layout.margin;
         let curr: [number, number, number, number];
         if (typeof m === "number") curr = [m, m, m, m];
         else if (Array.isArray(m) && m.length === 2) curr = [m[0], m[1], m[0], m[1]];
         else if (Array.isArray(m) && m.length === 4) curr = [m[0], m[1], m[2], m[3]];
         else curr = [0, 0, 0, 0];
 
-        const next: [number, number, number, number] =
+        const nextArr: [number, number, number, number] =
             index === 0
                 ? [value, curr[1], curr[2], curr[3]]
                 : index === 1
@@ -169,7 +120,7 @@
                     ? [curr[0], curr[1], value, curr[3]]
                     : [curr[0], curr[1], curr[2], value];
 
-        spec.layout.margin = next;
+        specState.current.layout.margin = nextArr;
         markDirty();
     }
 
@@ -177,22 +128,23 @@
         const t: TextSpec = {
             template: "",
             position: [0, 0],
-            ttf: null,
             size: 16,
             color: "black",
         };
-        spec.texts = [...spec.texts, t];
+        specState.current.texts.push(t);
         markDirty();
     }
 
     function removeText(i: number) {
-        spec.texts = spec.texts.filter((_, idx) => idx !== i);
+        specState.current.texts.splice(i, 1);
         markDirty();
     }
 
     function updateText(i: number, patch: Partial<TextSpec>) {
-        const next = spec.texts.map((t, idx) => (idx === i ? { ...t, ...patch } : t));
-        spec.texts = next;
+        const t = specState.current.texts[i];
+        if (t) {
+            Object.assign(t, patch);
+        }
         markDirty();
     }
 </script>
@@ -211,20 +163,22 @@
         <section class="panel">
             <h2>Project</h2>
 
-            {#if workspace}
+            {#if workspaceState.currentWorkspaceId}
                 <div class="kv">
-                    <div class="k">workspaceId</div>
-                    <div class="v monospace">{workspace.workspaceId}</div>
+                    <div class="k">ID</div>
+                    <div class="v monospace">{workspaceState.currentWorkspaceId}</div>
 
-                    <div class="k">workspaceDir</div>
-                    <div class="v monospace">{workspace.workspaceDir}</div>
+                    <div class="k">File</div>
+                    <div class="v monospace">
+                        {workspaceState.currentFilePath ?? "(unsaved new project)"}
+                    </div>
                 </div>
 
                 <p class="hint">
                     Workspace lives in a temporary directory. The spec is stored as <code>spec.toml</code>.
                 </p>
             {:else}
-                <p class="hint">Create a new project to start editing <code>spec.toml</code>.</p>
+                <p class="hint">Create or open a project to start editing.</p>
             {/if}
         </section>
 
@@ -232,11 +186,14 @@
             <h2>Spec Builder</h2>
 
             <div class="editorActions">
-                <button on:click={saveSpec} disabled={!workspace || !dirty || saving}>
+                <button
+                    on:click={saveSpec}
+                    disabled={!workspaceState.currentWorkspaceId || !workspaceState.isDirty || saving}
+                >
                     {saving ? "Saving…" : "Save"}
                 </button>
-                <button on:click={reloadSpec} disabled={!workspace || saving}> Reload </button>
-                {#if dirty}
+                <button on:click={reloadSpec} disabled={!workspaceState.currentWorkspaceId || saving}> Reload </button>
+                {#if workspaceState.isDirty}
                     <span class="badge">unsaved changes</span>
                 {/if}
             </div>
@@ -249,12 +206,15 @@
                             type="number"
                             min="1"
                             step="1"
-                            value={spec.stackSize}
+                            value={specState.current["stack-size"]}
                             on:input={(e) => {
-                                spec.stackSize = Math.max(1, Math.trunc(Number((e.target as HTMLInputElement).value)));
+                                specState.current["stack-size"] = Math.max(
+                                    1,
+                                    Math.trunc(Number((e.target as HTMLInputElement).value)),
+                                );
                                 markDirty();
                             }}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
 
@@ -262,13 +222,13 @@
                         <span class="label">source-image</span>
                         <input
                             type="text"
-                            value={spec.sourceImage}
+                            value={specState.current["source-image"]}
                             on:input={(e) => {
-                                spec.sourceImage = (e.target as HTMLInputElement).value;
+                                specState.current["source-image"] = (e.target as HTMLInputElement).value;
                                 markDirty();
                             }}
                             placeholder="assets/..."
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                 </div>
@@ -281,14 +241,14 @@
                             type="number"
                             min="1"
                             step="1"
-                            value={spec.layout.gridSize[0]}
+                            value={specState.current.layout["grid-size"][0]}
                             on:input={(e) =>
                                 setNumTuple2(
                                     "layout.gridSize",
                                     0,
                                     Math.max(1, Math.trunc(Number((e.target as HTMLInputElement).value))),
                                 )}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                     <label class="field">
@@ -297,14 +257,14 @@
                             type="number"
                             min="1"
                             step="1"
-                            value={spec.layout.gridSize[1]}
+                            value={specState.current.layout["grid-size"][1]}
                             on:input={(e) =>
                                 setNumTuple2(
                                     "layout.gridSize",
                                     1,
                                     Math.max(1, Math.trunc(Number((e.target as HTMLInputElement).value))),
                                 )}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                 </div>
@@ -315,9 +275,11 @@
                         <input
                             type="number"
                             step="0.5"
-                            value={typeof spec.layout.gap === "number" ? spec.layout.gap : spec.layout.gap[0]}
+                            value={typeof specState.current.layout.gap === "number"
+                                ? specState.current.layout.gap
+                                : specState.current.layout.gap[0]}
                             on:input={(e) => setGap(0, Number((e.target as HTMLInputElement).value))}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                     <label class="field">
@@ -325,9 +287,11 @@
                         <input
                             type="number"
                             step="0.5"
-                            value={typeof spec.layout.gap === "number" ? spec.layout.gap : spec.layout.gap[1]}
+                            value={typeof specState.current.layout.gap === "number"
+                                ? specState.current.layout.gap
+                                : specState.current.layout.gap[1]}
                             on:input={(e) => setGap(1, Number((e.target as HTMLInputElement).value))}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                 </div>
@@ -339,11 +303,12 @@
                         <input
                             type="number"
                             step="0.5"
-                            value={Array.isArray(spec.layout.margin) && spec.layout.margin.length === 4
-                                ? spec.layout.margin[0]
+                            value={Array.isArray(specState.current.layout.margin) &&
+                            specState.current.layout.margin.length === 4
+                                ? specState.current.layout.margin[0]
                                 : 0}
                             on:input={(e) => setMargin4(0, Number((e.target as HTMLInputElement).value))}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                     <label class="field">
@@ -351,11 +316,12 @@
                         <input
                             type="number"
                             step="0.5"
-                            value={Array.isArray(spec.layout.margin) && spec.layout.margin.length === 4
-                                ? spec.layout.margin[1]
+                            value={Array.isArray(specState.current.layout.margin) &&
+                            specState.current.layout.margin.length === 4
+                                ? specState.current.layout.margin[1]
                                 : 0}
                             on:input={(e) => setMargin4(1, Number((e.target as HTMLInputElement).value))}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                     <label class="field">
@@ -363,11 +329,12 @@
                         <input
                             type="number"
                             step="0.5"
-                            value={Array.isArray(spec.layout.margin) && spec.layout.margin.length === 4
-                                ? spec.layout.margin[2]
+                            value={Array.isArray(specState.current.layout.margin) &&
+                            specState.current.layout.margin.length === 4
+                                ? specState.current.layout.margin[2]
                                 : 0}
                             on:input={(e) => setMargin4(2, Number((e.target as HTMLInputElement).value))}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                     <label class="field">
@@ -375,29 +342,32 @@
                         <input
                             type="number"
                             step="0.5"
-                            value={Array.isArray(spec.layout.margin) && spec.layout.margin.length === 4
-                                ? spec.layout.margin[3]
+                            value={Array.isArray(specState.current.layout.margin) &&
+                            specState.current.layout.margin.length === 4
+                                ? specState.current.layout.margin[3]
                                 : 0}
                             on:input={(e) => setMargin4(3, Number((e.target as HTMLInputElement).value))}
-                            disabled={!workspace}
+                            disabled={!workspaceState.currentWorkspaceId}
                         />
                     </label>
                 </div>
 
                 <h3>texts</h3>
                 <div class="editorActions">
-                    <button on:click={addText} disabled={!workspace}>Add text</button>
+                    <button on:click={addText} disabled={!workspaceState.currentWorkspaceId}>Add text</button>
                 </div>
 
-                {#if spec.texts.length === 0}
+                {#if specState.current.texts.length === 0}
                     <p class="hint">No texts. Add one to begin.</p>
                 {:else}
                     <div class="texts">
-                        {#each spec.texts as t, i (i)}
+                        {#each specState.current.texts as t, i (i)}
                             <div class="textCard">
                                 <div class="textHeader">
                                     <strong>Text #{i + 1}</strong>
-                                    <button on:click={() => removeText(i)} disabled={!workspace}>Remove</button>
+                                    <button on:click={() => removeText(i)} disabled={!workspaceState.currentWorkspaceId}
+                                        >Remove</button
+                                    >
                                 </div>
 
                                 <div class="row">
@@ -408,7 +378,7 @@
                                             value={t.template}
                                             on:input={(e) =>
                                                 updateText(i, { template: (e.target as HTMLInputElement).value })}
-                                            disabled={!workspace}
+                                            disabled={!workspaceState.currentWorkspaceId}
                                         />
                                     </label>
                                 </div>
@@ -427,7 +397,7 @@
                                                     Number((e.target as HTMLInputElement).value),
                                                     i,
                                                 )}
-                                            disabled={!workspace}
+                                            disabled={!workspaceState.currentWorkspaceId}
                                         />
                                     </label>
                                     <label class="field">
@@ -443,7 +413,7 @@
                                                     Number((e.target as HTMLInputElement).value),
                                                     i,
                                                 )}
-                                            disabled={!workspace}
+                                            disabled={!workspaceState.currentWorkspaceId}
                                         />
                                     </label>
                                 </div>
@@ -457,9 +427,9 @@
                                             placeholder="assets/font.ttf"
                                             on:input={(e) => {
                                                 const v = (e.target as HTMLInputElement).value.trim();
-                                                updateText(i, { ttf: v === "" ? null : v });
+                                                updateText(i, { ttf: v === "" ? undefined : v });
                                             }}
-                                            disabled={!workspace}
+                                            disabled={!workspaceState.currentWorkspaceId}
                                         />
                                     </label>
 
@@ -477,7 +447,7 @@
                                                         Math.trunc(Number((e.target as HTMLInputElement).value)),
                                                     ),
                                                 })}
-                                            disabled={!workspace}
+                                            disabled={!workspaceState.currentWorkspaceId}
                                         />
                                     </label>
 
@@ -489,7 +459,7 @@
                                             placeholder="black / #ff00aa"
                                             on:input={(e) =>
                                                 updateText(i, { color: (e.target as HTMLInputElement).value })}
-                                            disabled={!workspace}
+                                            disabled={!workspaceState.currentWorkspaceId}
                                         />
                                     </label>
                                 </div>
@@ -557,7 +527,7 @@
 
     .kv {
         display: grid;
-        grid-template-columns: 9rem 1fr;
+        grid-template-columns: 4rem 1fr;
         gap: 0.25rem 0.75rem;
         align-items: baseline;
         margin-top: 0.5rem;
