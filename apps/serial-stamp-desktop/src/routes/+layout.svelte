@@ -11,3 +11,22 @@
 
 <MenuController />
 {@render children()}
+
+<style>
+    :global(body) {
+        margin: 0;
+        padding: 0;
+        font-family:
+            system-ui,
+            -apple-system,
+            sans-serif;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    :global(*),
+    :global(*::before),
+    :global(*::after) {
+        box-sizing: inherit;
+    }
+</style>
