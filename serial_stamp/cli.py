@@ -10,6 +10,39 @@ from serial_stamp.models import Spec
 from serial_stamp.project import Project, init_project, pack_project
 
 
+def preview_handler(args):
+    try:
+        with Project(args.input) as project:
+            if not project.spec_path.exists():
+                print(f"Error: Spec file not found at {project.spec_path}")
+                sys.exit(1)
+
+            with open(project.spec_path, "rb") as f:
+                data = tomllib.load(f)
+
+            spec = Spec(**data)
+
+            # Resolve source image path relative to the project working directory
+            img_path = project.work_dir / spec.source_image
+
+            if not img_path.exists() or img_path.is_dir():
+                print(f"Error: Source image not found at {img_path}")
+                sys.exit(1)
+
+            output_path = Path(args.output).resolve()
+
+            with Image.open(img_path) as source_image:
+                app = Engine(spec, output_path, source_image)
+                preview = app.generate_preview()
+                preview.save(output_path)
+
+            print(f"Successfully generated preview: {output_path}")
+
+    except Exception as e:
+        print(f"Error during preview generation: {e}")
+        sys.exit(1)
+
+
 def generate_handler(args):
     try:
         with Project(args.input) as project:
@@ -76,11 +109,21 @@ def main():
         "-o", "--output", required=True, help="Output PDF file path"
     )
 
+    # --- PREVIEW ---
+    parser_prev = subparsers.add_parser("preview", help="Generate a preview image")
+    parser_prev.add_argument(
+        "input", help="Input .stamp file, .toml file, or project directory"
+    )
+    parser_prev.add_argument(
+        "-o", "--output", required=True, help="Output PNG file path"
+    )
+
     # Default to 'generate' if the first argument doesn't match a subcommand
     if len(sys.argv) > 1 and sys.argv[1] not in [
         "init",
         "pack",
         "generate",
+        "preview",
         "-h",
         "--help",
     ]:
@@ -111,6 +154,9 @@ def main():
 
     elif args.command == "generate":
         generate_handler(args)
+
+    elif args.command == "preview":
+        preview_handler(args)
 
     else:
         parser.print_help()

@@ -1,9 +1,11 @@
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
+    process::Command,
     sync::{Mutex, OnceLock},
 };
 use tauri::{
@@ -481,6 +483,54 @@ fn project_unpack(app: tauri::AppHandle, file_path: String) -> Result<WorkspaceI
     unpack_stamp(&app, &stamp_path)
 }
 
+#[tauri::command]
+fn preview_generate(workspace_id: String) -> Result<String, String> {
+    let workspace_dir = get_workspace_dir(&workspace_id)?;
+    let preview_path = workspace_dir.join("preview.png");
+
+    // Attempt to find project root by looking for pyproject.toml
+    let mut root_dir = std::env::current_dir().map_err(|e| e.to_string())?;
+    loop {
+        if root_dir.join("pyproject.toml").exists() {
+            break;
+        }
+        if !root_dir.pop() {
+            return Err("Could not find project root with pyproject.toml".to_string());
+        }
+    }
+
+    let output = Command::new("uv")
+        .current_dir(&root_dir)
+        .args(&[
+            "run",
+            "serial-stamp",
+            "preview",
+            workspace_dir.to_str().ok_or("Invalid workspace path")?,
+            "-o",
+            preview_path.to_str().ok_or("Invalid preview path")?,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to execute python preview: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(format!(
+            "Preview generation failed.\nStdout: {stdout}\nStderr: {stderr}"
+        ));
+    }
+
+    if !preview_path.exists() {
+        return Err("Preview file was not created".to_string());
+    }
+
+    let image_data =
+        fs::read(&preview_path).map_err(|e| format!("Failed to read preview file: {e}"))?;
+
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&image_data);
+    Ok(b64)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Native menu items (Desktop). These are the main actions you requested to live in the native window menu.
@@ -537,7 +587,8 @@ pub fn run() {
             workspace_list_files,
             workspace_remove_file,
             project_pack,
-            project_unpack
+            project_unpack,
+            preview_generate
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

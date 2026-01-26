@@ -55,6 +55,9 @@ class Engine:
         count_needed = self.spec.stack_size * tickets_per_page
         stack_items = list(islice(items, count_needed))
 
+        if not stack_items:
+            stack_items = [{}] * count_needed
+
         return self.print_page(template, 0, stack_items)
 
     def generate(self, progress_callback: Optional[Callable[[int, int], None]] = None):
