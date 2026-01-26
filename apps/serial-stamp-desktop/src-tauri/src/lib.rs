@@ -5,7 +5,10 @@ use std::{
     path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
 };
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
+    AppHandle, Emitter, Manager,
+};
 
 const DEFAULT_SPEC_TOML: &str = r#"stack-size = 1
 source-image = ""
@@ -21,6 +24,17 @@ position = [10, 10]
 size = 24
 color = "black"
 "#;
+
+fn emit_menu_action(app: &AppHandle, menu_id: &str) {
+    // Only emit for our custom menu items (ignore predefined items like quit).
+    match menu_id {
+        "project.new" | "project.open" | "project.save" | "project.save_as" | "export.pdf" => {
+            // Frontend should listen to `menu://action` and branch on the `id`.
+            let _ = app.emit("menu://action", menu_id.to_string());
+        }
+        _ => {}
+    }
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -277,8 +291,38 @@ fn workspace_set_spec_json(workspace_id: String, spec: StampSpec) -> Result<(), 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Native menu items (Desktop). These are the main actions you requested to live in the native window menu.
+    //
+    // The behaviors (New/Open/Save/Save As/Export PDF) will be handled by the frontend.
+    // We emit an app-level event whenever a menu item is selected.
     tauri::Builder::default()
         .setup(|app| {
+            // Build menu
+            let file_menu = Submenu::with_items(
+                app,
+                "File",
+                true,
+                &[
+                    &MenuItem::with_id(app, "project.new", "New Project", true, None::<&str>)?,
+                    &MenuItem::with_id(app, "project.open", "Open Project…", true, None::<&str>)?,
+                    &MenuItem::with_id(app, "project.save", "Save Project", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        "project.save_as",
+                        "Save Project As…",
+                        true,
+                        None::<&str>,
+                    )?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(app, "export.pdf", "Export PDF…", true, None::<&str>)?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &PredefinedMenuItem::quit(app, None::<&str>)?,
+                ],
+            )?;
+
+            let menu = Menu::with_items(app, &[&file_menu])?;
+            app.set_menu(menu)?;
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -287,6 +331,9 @@ pub fn run() {
                 )?;
             }
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            emit_menu_action(app, event.id().as_ref());
         })
         .invoke_handler(tauri::generate_handler![
             workspace_new,
