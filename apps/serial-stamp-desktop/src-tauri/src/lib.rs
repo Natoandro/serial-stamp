@@ -194,8 +194,10 @@ fn spec_path_for(workspace_dir: &Path) -> PathBuf {
 }
 
 fn ensure_workspace_layout(workspace_dir: &Path) -> Result<(), String> {
-    fs::create_dir_all(workspace_dir.join("assets"))
-        .map_err(|e| format!("Failed to create workspace assets dir: {e}"))?;
+    fs::create_dir_all(workspace_dir.join("images"))
+        .map_err(|e| format!("Failed to create workspace images dir: {e}"))?;
+    fs::create_dir_all(workspace_dir.join("fonts"))
+        .map_err(|e| format!("Failed to create workspace fonts dir: {e}"))?;
 
     let spec_path = spec_path_for(workspace_dir);
     if !spec_path.exists() {
@@ -315,32 +317,34 @@ fn pack_workspace(workspace_dir: &Path, dest_zip_path: &Path) -> Result<(), Stri
             .map_err(|e| format!("Failed to write spec.toml to zip: {e}"))?;
     }
 
-    // 2. Add assets recursively
-    let assets_dir = workspace_dir.join("assets");
-    if assets_dir.exists() {
-        for entry in WalkDir::new(&assets_dir) {
-            let entry = entry.map_err(|e| format!("WalkDir error: {e}"))?;
-            let path = entry.path();
-            if path.is_file() {
-                let name = path
-                    .strip_prefix(workspace_dir)
-                    .map_err(|e| format!("Path prefix error: {e}"))?
-                    .to_str()
-                    .ok_or("Invalid path encoding")?;
+    // 2. Add resources recursively
+    for folder in ["images", "fonts"] {
+        let dir = workspace_dir.join(folder);
+        if dir.exists() {
+            for entry in WalkDir::new(&dir) {
+                let entry = entry.map_err(|e| format!("WalkDir error: {e}"))?;
+                let path = entry.path();
+                if path.is_file() {
+                    let name = path
+                        .strip_prefix(workspace_dir)
+                        .map_err(|e| format!("Path prefix error: {e}"))?
+                        .to_str()
+                        .ok_or("Invalid path encoding")?;
 
-                // On Windows, paths might use backslashes, but zip expects forward slashes.
-                #[cfg(windows)]
-                let name = name.replace('\\', "/");
+                    // On Windows, paths might use backslashes, but zip expects forward slashes.
+                    #[cfg(windows)]
+                    let name = name.replace('\\', "/");
 
-                zip.start_file(name, options)
-                    .map_err(|e| format!("Zip error for {name}: {e}"))?;
-                let mut f = fs::File::open(path)
-                    .map_err(|e| format!("Failed to open asset {path:?}: {e}"))?;
-                let mut buffer = Vec::new();
-                f.read_to_end(&mut buffer)
-                    .map_err(|e| format!("Failed to read asset {path:?}: {e}"))?;
-                zip.write_all(&buffer)
-                    .map_err(|e| format!("Failed to write asset {path:?} to zip: {e}"))?;
+                    zip.start_file(name, options)
+                        .map_err(|e| format!("Zip error for {name}: {e}"))?;
+                    let mut f = fs::File::open(path)
+                        .map_err(|e| format!("Failed to open file {path:?}: {e}"))?;
+                    let mut buffer = Vec::new();
+                    f.read_to_end(&mut buffer)
+                        .map_err(|e| format!("Failed to read file {path:?}: {e}"))?;
+                    zip.write_all(&buffer)
+                        .map_err(|e| format!("Failed to write file {path:?} to zip: {e}"))?;
+                }
             }
         }
     }
@@ -387,6 +391,81 @@ fn unpack_stamp(app: &AppHandle, stamp_path: &Path) -> Result<WorkspaceInfo, Str
     }
 
     Ok(workspace_info)
+}
+
+#[tauri::command]
+fn workspace_add_file(
+    workspace_id: String,
+    src_path: String,
+    category: String,
+) -> Result<String, String> {
+    if category != "images" && category != "fonts" {
+        return Err("Invalid category. Must be 'images' or 'fonts'".to_string());
+    }
+    let workspace_dir = get_workspace_dir(&workspace_id)?;
+    let src = PathBuf::from(&src_path);
+    let filename = src
+        .file_name()
+        .ok_or("Invalid source path")?
+        .to_string_lossy()
+        .to_string();
+
+    let dest_dir = workspace_dir.join(&category);
+    fs::create_dir_all(&dest_dir).map_err(|e| format!("Failed to create dir: {e}"))?;
+
+    let dest = dest_dir.join(&filename);
+    fs::copy(&src, &dest).map_err(|e| format!("Failed to copy file: {e}"))?;
+
+    // Return relative path like "images/foo.png" or "fonts/bar.ttf"
+    Ok(format!("{}/{}", category, filename))
+}
+
+#[tauri::command]
+fn workspace_list_files(workspace_id: String, category: String) -> Result<Vec<String>, String> {
+    if category != "images" && category != "fonts" {
+        return Err("Invalid category. Must be 'images' or 'fonts'".to_string());
+    }
+    let workspace_dir = get_workspace_dir(&workspace_id)?;
+    let target_dir = workspace_dir.join(&category);
+
+    let mut files = Vec::new();
+    if target_dir.exists() {
+        for entry in fs::read_dir(target_dir).map_err(|e| format!("Read dir error: {e}"))? {
+            let entry = entry.map_err(|e| format!("Entry error: {e}"))?;
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(name) = path.file_name() {
+                    files.push(format!("{}/{}", category, name.to_string_lossy()));
+                }
+            }
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
+#[tauri::command]
+fn workspace_remove_file(
+    workspace_id: String,
+    category: String,
+    filename: String,
+) -> Result<(), String> {
+    let workspace_dir = get_workspace_dir(&workspace_id)?;
+    if filename.contains("..") {
+        return Err("Invalid filename".to_string());
+    }
+    let path = workspace_dir.join(&filename);
+
+    // Check if path is inside workspace_dir/category
+    let cat_dir = workspace_dir.join(&category);
+    if !path.starts_with(&cat_dir) {
+        return Err("Invalid file path".to_string());
+    }
+
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| format!("Failed to remove file: {e}"))?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -454,6 +533,9 @@ pub fn run() {
             workspace_new,
             workspace_get_spec_json,
             workspace_set_spec_json,
+            workspace_add_file,
+            workspace_list_files,
+            workspace_remove_file,
             project_pack,
             project_unpack
         ])

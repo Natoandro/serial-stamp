@@ -5,6 +5,7 @@
     import { open, save } from "@tauri-apps/plugin-dialog";
     import { workspaceState } from "$lib/state/workspace.svelte";
     import { specState } from "$lib/state/spec.svelte";
+    import { resourceState } from "$lib/state/resources.svelte";
 
     interface WorkspaceInfo {
         workspaceId: string;
@@ -50,6 +51,8 @@
         workspaceState.currentWorkspaceId = ws.workspaceId;
         workspaceState.currentFilePath = null;
         workspaceState.isDirty = false;
+        resourceState.reset();
+        await resourceState.refresh(ws.workspaceId);
     }
 
     async function handleOpen() {
@@ -63,6 +66,7 @@
             workspaceState.currentWorkspaceId = ws.workspaceId;
             workspaceState.currentFilePath = selected;
             workspaceState.isDirty = false;
+            await resourceState.refresh(ws.workspaceId);
         }
     }
 
