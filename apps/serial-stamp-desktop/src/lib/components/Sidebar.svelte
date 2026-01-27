@@ -5,7 +5,7 @@
     import TextEditor from "./TextEditor.svelte";
     import AccordionGroup from "./AccordionGroup.svelte";
     import AccordionSection from "./AccordionSection.svelte";
-    import { Input, NumberInput, Select, ColorInput, Button, IconButton } from "./forms";
+    import { Input, NumberInput, Select, ColorInput, Button, IconButton, GridSizePicker } from "./forms";
 
     let { newWorkspace } = $props<{ newWorkspace: () => void }>();
 
@@ -124,36 +124,14 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="grid-size-x">Grid Size (X / Y)</label>
-                            <div class="row">
-                                <NumberInput
-                                    id="grid-size-x"
-                                    min={1}
-                                    step={1}
-                                    placeholder="X"
-                                    value={specState.current.layout["grid-size"][0]}
-                                    oninput={(e) => {
-                                        specState.current.layout["grid-size"][0] = Math.max(
-                                            1,
-                                            Math.trunc(Number(e.currentTarget.value)),
-                                        );
-                                        markDirty();
-                                    }}
-                                />
-                                <NumberInput
-                                    min={1}
-                                    step={1}
-                                    placeholder="Y"
-                                    value={specState.current.layout["grid-size"][1]}
-                                    oninput={(e) => {
-                                        specState.current.layout["grid-size"][1] = Math.max(
-                                            1,
-                                            Math.trunc(Number(e.currentTarget.value)),
-                                        );
-                                        markDirty();
-                                    }}
-                                />
-                            </div>
+                            <label for="grid-size">Grid Size</label>
+                            <GridSizePicker
+                                value={specState.current.layout["grid-size"]}
+                                onchange={(size) => {
+                                    specState.current.layout["grid-size"] = size;
+                                    markDirty();
+                                }}
+                            />
                         </div>
                     {/snippet}
                 </AccordionSection>
