@@ -140,9 +140,14 @@
     }
 
     .grid-cell.selected {
-        background: var(--color-accent-200);
+        background: repeating-linear-gradient(
+            45deg,
+            var(--color-accent-200),
+            var(--color-accent-200) 4px,
+            var(--color-accent-300) 4px,
+            var(--color-accent-300) 8px
+        );
         border-color: var(--color-accent-300);
-        box-shadow: inset 0 0 0 2px var(--color-accent-500);
     }
 
     .grid-cell.hovered {
@@ -151,9 +156,14 @@
     }
 
     .grid-cell.selected.hovered {
-        background: var(--color-accent-400);
+        background: repeating-linear-gradient(
+            45deg,
+            var(--color-accent-400),
+            var(--color-accent-400) 4px,
+            var(--color-accent-500) 4px,
+            var(--color-accent-500) 8px
+        );
         border-color: var(--color-accent-500);
-        box-shadow: inset 0 0 0 2px var(--color-accent-700);
     }
 
     .grid-cell.hovered:hover {
