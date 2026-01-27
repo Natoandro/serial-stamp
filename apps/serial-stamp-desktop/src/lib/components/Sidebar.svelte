@@ -7,8 +7,6 @@
     import AccordionSection from "./AccordionSection.svelte";
     import { Input, NumberInput, Select, ColorInput, Button, IconButton, GridSizePicker } from "./forms";
 
-    let { newWorkspace } = $props<{ newWorkspace: () => void }>();
-
     function markDirty() {
         workspaceState.isDirty = true;
     }
@@ -35,28 +33,6 @@
 </script>
 
 <aside class="sidebar">
-    <div class="section project-info">
-        <h2>Project</h2>
-        {#if workspaceState.currentWorkspaceId}
-            <div class="kv">
-                <span class="label">ID</span>
-                <span class="value" title={workspaceState.currentWorkspaceId}
-                    >{workspaceState.currentWorkspaceId.slice(0, 8)}...</span
-                >
-            </div>
-            <div class="kv">
-                <span class="label">File</span>
-                <span class="value" title={workspaceState.currentFilePath ?? "Unsaved"}
-                    >{workspaceState.currentFilePath
-                        ? workspaceState.currentFilePath.split(/[/\\]/).pop()
-                        : "Unsaved"}</span
-                >
-            </div>
-        {:else}
-            <Button variant="primary" onclick={newWorkspace} class="full-width">Create New Project</Button>
-        {/if}
-    </div>
-
     {#if workspaceState.currentWorkspaceId}
         <AccordionGroup storageKey="sidebar-accordion" defaultExpanded="global">
             {#snippet children({
@@ -205,46 +181,6 @@
         gap: 0;
     }
 
-    .section {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        flex-shrink: 0;
-    }
-
-    .project-info {
-        margin-bottom: var(--space-4);
-        padding-bottom: var(--space-4);
-        border-bottom: 2px solid var(--border-strong);
-    }
-
-    .project-info h2 {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--sidebar-header-text);
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .kv {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.9rem;
-    }
-
-    .kv .label {
-        color: var(--text-secondary);
-    }
-
-    .kv .value {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 150px;
-    }
-
     .form-group {
         display: flex;
         flex-direction: column;
@@ -308,9 +244,5 @@
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 180px;
-    }
-
-    :global(.full-width) {
-        width: 100%;
     }
 </style>

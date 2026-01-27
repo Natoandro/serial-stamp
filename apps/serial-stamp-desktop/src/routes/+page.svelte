@@ -42,7 +42,7 @@
 </script>
 
 {#snippet sidebarContent()}
-    <Sidebar {newWorkspace} />
+    <Sidebar />
 {/snippet}
 
 <AppLayout sidebar={sidebarContent}>
