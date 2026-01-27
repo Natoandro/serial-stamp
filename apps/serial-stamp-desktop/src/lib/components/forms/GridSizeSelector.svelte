@@ -68,10 +68,12 @@
             {#each Array(maxCols) as _, colIndex}
                 {@const x = colIndex + 1}
                 {@const y = rowIndex + 1}
-                {@const isActive = isHovering ? x <= hoverX && y <= hoverY : x <= value[0] && y <= value[1]}
+                {@const isSelected = x <= value[0] && y <= value[1]}
+                {@const isHovered = isHovering && x <= hoverX && y <= hoverY}
                 <div
                     class="grid-cell"
-                    class:active={isActive}
+                    class:selected={isSelected}
+                    class:hovered={isHovered}
                     onmouseenter={() => handleCellHover(x, y)}
                     role="presentation"
                 ></div>
@@ -137,12 +139,17 @@
         border-color: var(--color-accent-300);
     }
 
-    .grid-cell.active {
+    .grid-cell.selected {
+        background: var(--color-accent-200);
+        border-color: var(--color-accent-300);
+    }
+
+    .grid-cell.hovered {
         background: var(--color-accent-400);
         border-color: var(--color-accent-500);
     }
 
-    .grid-cell.active:hover {
+    .grid-cell.hovered:hover {
         background: var(--color-accent-500);
         border-color: var(--color-accent-600);
     }
