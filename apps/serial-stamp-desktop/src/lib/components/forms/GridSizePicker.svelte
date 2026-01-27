@@ -1,5 +1,7 @@
 <script lang="ts">
     import GridSizeSelector from "./GridSizeSelector.svelte";
+    import NumberInput from "./NumberInput.svelte";
+    import Switch from "./Switch.svelte";
     import GridIcon from "$lib/icons/GridIcon.svelte";
     import ChevronIcon from "$lib/icons/ChevronIcon.svelte";
 
@@ -13,6 +15,7 @@
     let { value = $bindable([1, 1]), onchange, disabled = false, class: className = "" }: Props = $props();
 
     let popoverOpen = $state(false);
+    let visualMode = $state(true);
     let buttonRef: HTMLButtonElement | undefined = $state();
     let popoverRef: HTMLDivElement | undefined = $state();
 
@@ -30,6 +33,21 @@
             onchange(size);
         }
         closePopover();
+    }
+
+    function handleManualChange(index: 0 | 1, newValue: number) {
+        const newSize: [number, number] = [...value] as [number, number];
+        newSize[index] = Math.max(1, Math.trunc(newValue));
+        value = newSize;
+        if (onchange) {
+            onchange(newSize);
+        }
+    }
+
+    function handleManualKeyDown(event: KeyboardEvent) {
+        if (event.key === "Enter") {
+            closePopover();
+        }
     }
 
     // Close popover when clicking outside
@@ -71,7 +89,46 @@
 
     {#if popoverOpen}
         <div bind:this={popoverRef} class="popover">
-            <GridSizeSelector {value} onchange={handleSizeChange} />
+            <div class="popover-header">
+                <span class="mode-label">{visualMode ? "Visual" : "Manual"}</span>
+                <Switch
+                    checked={visualMode}
+                    onchange={(checked) => (visualMode = checked)}
+                    size="compact"
+                    ariaLabel="Toggle input mode"
+                />
+            </div>
+
+            {#if visualMode}
+                <GridSizeSelector {value} onchange={handleSizeChange} />
+            {:else}
+                <div class="manual-inputs">
+                    <div class="input-group">
+                        <label for="manual-x">Columns</label>
+                        <NumberInput
+                            id="manual-x"
+                            value={value[0]}
+                            min={1}
+                            step={1}
+                            oninput={(e) => handleManualChange(0, Number(e.currentTarget.value))}
+                            onkeydown={handleManualKeyDown}
+                            size="compact"
+                        />
+                    </div>
+                    <div class="input-group">
+                        <label for="manual-y">Rows</label>
+                        <NumberInput
+                            id="manual-y"
+                            value={value[1]}
+                            min={1}
+                            step={1}
+                            oninput={(e) => handleManualChange(1, Number(e.currentTarget.value))}
+                            onkeydown={handleManualKeyDown}
+                            size="compact"
+                        />
+                    </div>
+                </div>
+            {/if}
         </div>
     {/if}
 </div>
@@ -142,6 +199,41 @@
         padding: 0.75rem;
         box-shadow: var(--shadow-lg);
         animation: popover-appear 0.15s ease-out;
+        min-width: 200px;
+    }
+
+    .popover-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-subtle);
+        margin-bottom: 0.75rem;
+    }
+
+    .mode-label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .manual-inputs {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        min-width: 150px;
+    }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .input-group label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-primary);
     }
 
     @keyframes popover-appear {

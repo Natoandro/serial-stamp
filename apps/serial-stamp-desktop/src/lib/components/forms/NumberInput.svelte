@@ -3,6 +3,7 @@
         value: number;
         oninput?: (e: Event & { currentTarget: HTMLInputElement }) => void;
         onchange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
+        onkeydown?: (e: KeyboardEvent) => void;
         min?: number;
         max?: number;
         step?: number | string;
@@ -20,6 +21,7 @@
         value = $bindable(0),
         oninput,
         onchange,
+        onkeydown,
         min,
         max,
         step = 1,
@@ -47,6 +49,7 @@
     {title}
     {oninput}
     {onchange}
+    {onkeydown}
     class="number-input {size} {className}"
     aria-label={ariaLabel}
 />
