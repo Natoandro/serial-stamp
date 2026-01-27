@@ -1,5 +1,7 @@
 <script lang="ts">
     import GridSizeSelector from "./GridSizeSelector.svelte";
+    import GridIcon from "$lib/icons/GridIcon.svelte";
+    import ChevronIcon from "$lib/icons/ChevronIcon.svelte";
 
     interface Props {
         value: [number, number];
@@ -8,12 +10,7 @@
         class?: string;
     }
 
-    let {
-        value = $bindable([1, 1]),
-        onchange,
-        disabled = false,
-        class: className = "",
-    }: Props = $props();
+    let { value = $bindable([1, 1]), onchange, disabled = false, class: className = "" }: Props = $props();
 
     let popoverOpen = $state(false);
     let buttonRef: HTMLButtonElement | undefined = $state();
@@ -67,29 +64,14 @@
         {disabled}
         aria-label="Select grid size"
     >
-        <span class="grid-icon">
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-            >
-                <rect x="2" y="2" width="5" height="5" />
-                <rect x="9" y="2" width="5" height="5" />
-                <rect x="2" y="9" width="5" height="5" />
-                <rect x="9" y="9" width="5" height="5" />
-            </svg>
-        </span>
+        <GridIcon class="grid-icon" size={16} />
         <span class="size-text">{value[0]} × {value[1]}</span>
-        <span class="chevron">▾</span>
+        <ChevronIcon class="chevron" size={12} />
     </button>
 
     {#if popoverOpen}
         <div bind:this={popoverRef} class="popover">
-            <GridSizeSelector value={value} onchange={handleSizeChange} />
+            <GridSizeSelector {value} onchange={handleSizeChange} />
         </div>
     {/if}
 </div>
@@ -131,9 +113,7 @@
         cursor: not-allowed;
     }
 
-    .grid-icon {
-        display: flex;
-        align-items: center;
+    :global(.picker-button .grid-icon) {
         color: var(--text-secondary);
     }
 
@@ -142,13 +122,12 @@
         text-align: left;
     }
 
-    .chevron {
-        font-size: 0.75rem;
+    :global(.picker-button .chevron) {
         color: var(--text-tertiary);
-        transition: transform var(--transition-fast);
+        transition: color var(--transition-fast);
     }
 
-    .picker-button:hover .chevron {
+    :global(.picker-button:hover .chevron) {
         color: var(--text-secondary);
     }
 
