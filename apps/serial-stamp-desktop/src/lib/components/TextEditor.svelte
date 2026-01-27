@@ -32,134 +32,117 @@
     }
 </script>
 
-<div class="section">
-    <div class="header-row">
-        <h2>Texts</h2>
-        <button onclick={addText} class="icon-btn" title="Add Text">+</button>
-    </div>
+<div class="header-row-inline">
+    <button onclick={addText} class="icon-btn" title="Add Text">+</button>
+</div>
 
-    {#if specState.current.texts.length === 0}
-        <div class="empty-state">No texts defined.</div>
-    {:else}
-        <div class="list">
-            {#each specState.current.texts as t, i (i)}
-                <div class="text-card">
-                    <div class="card-header">
-                        <h4>#{i + 1}</h4>
-                        <button class="icon-btn danger" onclick={() => removeText(i)}>×</button>
-                    </div>
+{#if specState.current.texts.length === 0}
+    <div class="empty-state">No texts defined.</div>
+{:else}
+    <div class="list">
+        {#each specState.current.texts as t, i (i)}
+            <div class="text-card">
+                <div class="card-header">
+                    <h4>#{i + 1}</h4>
+                    <button class="icon-btn danger" onclick={() => removeText(i)}>×</button>
+                </div>
 
-                    <div class="form-group">
+                <div class="form-group">
+                    <input
+                        type="text"
+                        placeholder="Template text"
+                        value={t.template}
+                        oninput={(e) => updateText(i, { template: e.currentTarget.value })}
+                        aria-label="Template text"
+                    />
+                </div>
+
+                <div class="row">
+                    <div class="form-group half">
+                        <label for="text-{i}-x" class="sub-label">X</label>
                         <input
-                            type="text"
-                            placeholder="Template text"
-                            value={t.template}
-                            oninput={(e) => updateText(i, { template: e.currentTarget.value })}
-                            aria-label="Template text"
+                            id="text-{i}-x"
+                            type="number"
+                            step="0.5"
+                            value={t.position[0]}
+                            oninput={(e) => {
+                                const val = Number(e.currentTarget.value);
+                                updateText(i, { position: [val, t.position[1]] });
+                            }}
                         />
                     </div>
-
-                    <div class="row">
-                        <div class="form-group half">
-                            <label for="text-{i}-x" class="sub-label">X</label>
-                            <input
-                                id="text-{i}-x"
-                                type="number"
-                                step="0.5"
-                                value={t.position[0]}
-                                oninput={(e) => {
-                                    const val = Number(e.currentTarget.value);
-                                    updateText(i, { position: [val, t.position[1]] });
-                                }}
-                            />
-                        </div>
-                        <div class="form-group half">
-                            <label for="text-{i}-y" class="sub-label">Y</label>
-                            <input
-                                id="text-{i}-y"
-                                type="number"
-                                step="0.5"
-                                value={t.position[1]}
-                                oninput={(e) => {
-                                    const val = Number(e.currentTarget.value);
-                                    updateText(i, { position: [t.position[0], val] });
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group grow">
-                            <select
-                                value={t.ttf ?? ""}
-                                onchange={(e) => {
-                                    const v = e.currentTarget.value;
-                                    updateText(i, { ttf: v === "" ? undefined : v });
-                                }}
-                                aria-label="Font"
-                            >
-                                <option value="">(Default Font)</option>
-                                {#each resourceState.fonts as font}
-                                    <option value={font}>{font.split("/").pop()}</option>
-                                {/each}
-                            </select>
-                        </div>
-                        <div class="form-group narrow">
-                            <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={t.size}
-                                title="Font Size"
-                                aria-label="Font Size"
-                                oninput={(e) =>
-                                    updateText(i, {
-                                        size: Math.max(1, Math.trunc(Number(e.currentTarget.value))),
-                                    })}
-                            />
-                        </div>
-                    </div>
-
-                    <div class="color-row">
+                    <div class="form-group half">
+                        <label for="text-{i}-y" class="sub-label">Y</label>
                         <input
-                            type="text"
-                            value={typeof t.color === "string" ? t.color : JSON.stringify(t.color)}
-                            oninput={(e) => updateText(i, { color: e.currentTarget.value })}
-                            aria-label="Color Text"
-                        />
-                        <input
-                            type="color"
-                            value={typeof t.color === "string" && t.color.startsWith("#") ? t.color : "#000000"}
-                            oninput={(e) => updateText(i, { color: e.currentTarget.value })}
-                            aria-label="Color Picker"
+                            id="text-{i}-y"
+                            type="number"
+                            step="0.5"
+                            value={t.position[1]}
+                            oninput={(e) => {
+                                const val = Number(e.currentTarget.value);
+                                updateText(i, { position: [t.position[0], val] });
+                            }}
                         />
                     </div>
                 </div>
-            {/each}
-        </div>
-    {/if}
-</div>
+
+                <div class="row">
+                    <div class="form-group grow">
+                        <select
+                            value={t.ttf ?? ""}
+                            onchange={(e) => {
+                                const v = e.currentTarget.value;
+                                updateText(i, { ttf: v === "" ? undefined : v });
+                            }}
+                            aria-label="Font"
+                        >
+                            <option value="">(Default Font)</option>
+                            {#each resourceState.fonts as font}
+                                <option value={font}>{font.split("/").pop()}</option>
+                            {/each}
+                        </select>
+                    </div>
+                    <div class="form-group narrow">
+                        <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={t.size}
+                            title="Font Size"
+                            aria-label="Font Size"
+                            oninput={(e) =>
+                                updateText(i, {
+                                    size: Math.max(1, Math.trunc(Number(e.currentTarget.value))),
+                                })}
+                        />
+                    </div>
+                </div>
+
+                <div class="color-row">
+                    <input
+                        type="text"
+                        value={typeof t.color === "string" ? t.color : JSON.stringify(t.color)}
+                        oninput={(e) => updateText(i, { color: e.currentTarget.value })}
+                        aria-label="Color Text"
+                    />
+                    <input
+                        type="color"
+                        value={typeof t.color === "string" && t.color.startsWith("#") ? t.color : "#000000"}
+                        oninput={(e) => updateText(i, { color: e.currentTarget.value })}
+                        aria-label="Color Picker"
+                    />
+                </div>
+            </div>
+        {/each}
+    </div>
+{/if}
 
 <style>
-    .section {
+    .header-row-inline {
         display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .header-row {
-        display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: center;
-    }
-
-    h2 {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #6b7280;
-        font-weight: 600;
-        margin: 0;
+        margin-bottom: 0.5rem;
     }
 
     h4 {

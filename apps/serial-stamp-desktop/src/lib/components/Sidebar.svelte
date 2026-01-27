@@ -3,6 +3,8 @@
     import { resourceState } from "$lib/state/resources.svelte";
     import { specState } from "$lib/state/spec.svelte";
     import TextEditor from "./TextEditor.svelte";
+    import AccordionGroup from "./AccordionGroup.svelte";
+    import AccordionSection from "./AccordionSection.svelte";
 
     let { newWorkspace } = $props<{ newWorkspace: () => void }>();
 
@@ -55,141 +57,164 @@
     </div>
 
     {#if workspaceState.currentWorkspaceId}
-        <div class="section">
-            <h2>Global Settings</h2>
+        <AccordionGroup storageKey="sidebar-accordion" defaultExpanded="global">
+            {#snippet children({
+                isExpanded,
+                toggle,
+            }: {
+                isExpanded: (id: string) => boolean;
+                toggle: (id: string) => void;
+            })}
+                <AccordionSection
+                    title="Global Settings"
+                    expanded={isExpanded("global")}
+                    onclick={() => toggle("global")}
+                >
+                    {#snippet children()}
+                        <div class="row">
+                            <div class="form-group half">
+                                <label for="stack-size">Stack Size</label>
+                                <input
+                                    id="stack-size"
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={specState.current["stack-size"]}
+                                    oninput={(e) => {
+                                        specState.current["stack-size"] = Math.max(
+                                            1,
+                                            Math.trunc(Number(e.currentTarget.value)),
+                                        );
+                                        markDirty();
+                                    }}
+                                />
+                            </div>
+                            <div class="form-group half">
+                                <label for="source-image">Source Image</label>
+                                <select
+                                    id="source-image"
+                                    value={specState.current["source-image"]}
+                                    onchange={(e) => {
+                                        specState.current["source-image"] = e.currentTarget.value;
+                                        markDirty();
+                                    }}
+                                >
+                                    <option value="">(None)</option>
+                                    {#each resourceState.images as img}
+                                        <option value={img}>{img}</option>
+                                    {/each}
+                                </select>
+                            </div>
+                        </div>
 
-            <div class="row">
-                <div class="form-group half">
-                    <label for="stack-size">Stack Size</label>
-                    <input
-                        id="stack-size"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={specState.current["stack-size"]}
-                        oninput={(e) => {
-                            specState.current["stack-size"] = Math.max(1, Math.trunc(Number(e.currentTarget.value)));
-                            markDirty();
-                        }}
-                    />
-                </div>
-                <div class="form-group half">
-                    <label for="source-image">Source Image</label>
-                    <select
-                        id="source-image"
-                        value={specState.current["source-image"]}
-                        onchange={(e) => {
-                            specState.current["source-image"] = e.currentTarget.value;
-                            markDirty();
-                        }}
-                    >
-                        <option value="">(None)</option>
-                        {#each resourceState.images as img}
-                            <option value={img}>{img}</option>
-                        {/each}
-                    </select>
-                </div>
-            </div>
+                        <div class="form-group">
+                            <label for="bg-color">Background</label>
+                            <div class="color-row">
+                                <input
+                                    id="bg-color"
+                                    type="text"
+                                    value={typeof specState.current.background === "string"
+                                        ? specState.current.background
+                                        : JSON.stringify(specState.current.background)}
+                                    oninput={(e) => {
+                                        specState.current.background = e.currentTarget.value;
+                                        markDirty();
+                                    }}
+                                />
+                                <input
+                                    type="color"
+                                    value={typeof specState.current.background === "string" &&
+                                    specState.current.background.startsWith("#")
+                                        ? specState.current.background
+                                        : "#ffffff"}
+                                    oninput={(e) => {
+                                        specState.current.background = e.currentTarget.value;
+                                        markDirty();
+                                    }}
+                                />
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label for="bg-color">Background</label>
-                <div class="color-row">
-                    <input
-                        id="bg-color"
-                        type="text"
-                        value={typeof specState.current.background === "string"
-                            ? specState.current.background
-                            : JSON.stringify(specState.current.background)}
-                        oninput={(e) => {
-                            specState.current.background = e.currentTarget.value;
-                            markDirty();
-                        }}
-                    />
-                    <input
-                        type="color"
-                        value={typeof specState.current.background === "string" &&
-                        specState.current.background.startsWith("#")
-                            ? specState.current.background
-                            : "#ffffff"}
-                        oninput={(e) => {
-                            specState.current.background = e.currentTarget.value;
-                            markDirty();
-                        }}
-                    />
-                </div>
-            </div>
+                        <div class="form-group">
+                            <label for="grid-size-x">Grid Size (X / Y)</label>
+                            <div class="row">
+                                <input
+                                    id="grid-size-x"
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="X"
+                                    value={specState.current.layout["grid-size"][0]}
+                                    oninput={(e) => {
+                                        specState.current.layout["grid-size"][0] = Math.max(
+                                            1,
+                                            Math.trunc(Number(e.currentTarget.value)),
+                                        );
+                                        markDirty();
+                                    }}
+                                />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="Y"
+                                    value={specState.current.layout["grid-size"][1]}
+                                    oninput={(e) => {
+                                        specState.current.layout["grid-size"][1] = Math.max(
+                                            1,
+                                            Math.trunc(Number(e.currentTarget.value)),
+                                        );
+                                        markDirty();
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    {/snippet}
+                </AccordionSection>
 
-            <div class="form-group">
-                <label for="grid-size-x">Grid Size (X / Y)</label>
-                <div class="row">
-                    <input
-                        id="grid-size-x"
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="X"
-                        value={specState.current.layout["grid-size"][0]}
-                        oninput={(e) => {
-                            specState.current.layout["grid-size"][0] = Math.max(
-                                1,
-                                Math.trunc(Number(e.currentTarget.value)),
-                            );
-                            markDirty();
-                        }}
-                    />
-                    <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="Y"
-                        value={specState.current.layout["grid-size"][1]}
-                        oninput={(e) => {
-                            specState.current.layout["grid-size"][1] = Math.max(
-                                1,
-                                Math.trunc(Number(e.currentTarget.value)),
-                            );
-                            markDirty();
-                        }}
-                    />
-                </div>
-            </div>
-        </div>
+                <AccordionSection title="Texts" expanded={isExpanded("texts")} onclick={() => toggle("texts")}>
+                    {#snippet children()}
+                        <TextEditor />
+                    {/snippet}
+                </AccordionSection>
 
-        <TextEditor />
+                <AccordionSection title="Images" expanded={isExpanded("images")} onclick={() => toggle("images")}>
+                    {#snippet children()}
+                        <div class="header-row-inline">
+                            <button class="icon-btn" onclick={importImage} title="Import Image">+</button>
+                        </div>
+                        <ul class="resource-list">
+                            {#each resourceState.images as img}
+                                <li>
+                                    <span class="name" title={img}>{img.split("/").pop()}</span>
+                                    <button class="icon-btn danger" onclick={() => removeFile("images", img)}>×</button>
+                                </li>
+                            {:else}
+                                <li class="empty">No images</li>
+                            {/each}
+                        </ul>
+                    {/snippet}
+                </AccordionSection>
 
-        <div class="section resources">
-            <div class="header-row">
-                <h2>Images</h2>
-                <button class="icon-btn" onclick={importImage} title="Import Image">+</button>
-            </div>
-            <ul class="resource-list">
-                {#each resourceState.images as img}
-                    <li>
-                        <span class="name" title={img}>{img.split("/").pop()}</span>
-                        <button class="icon-btn danger" onclick={() => removeFile("images", img)}>×</button>
-                    </li>
-                {:else}
-                    <li class="empty">No images</li>
-                {/each}
-            </ul>
-        </div>
-
-        <div class="section resources">
-            <div class="header-row">
-                <h2>Fonts</h2>
-                <button class="icon-btn" onclick={importFont} title="Import Font">+</button>
-            </div>
-            <ul class="resource-list">
-                {#each resourceState.fonts as font}
-                    <li>
-                        <span class="name" title={font}>{font.split("/").pop()}</span>
-                        <button class="icon-btn danger" onclick={() => removeFile("fonts", font)}>×</button>
-                    </li>
-                {:else}
-                    <li class="empty">No fonts</li>
-                {/each}
-            </ul>
-        </div>
+                <AccordionSection title="Fonts" expanded={isExpanded("fonts")} onclick={() => toggle("fonts")}>
+                    {#snippet children()}
+                        <div class="header-row-inline">
+                            <button class="icon-btn" onclick={importFont} title="Import Font">+</button>
+                        </div>
+                        <ul class="resource-list">
+                            {#each resourceState.fonts as font}
+                                <li>
+                                    <span class="name" title={font}>{font.split("/").pop()}</span>
+                                    <button class="icon-btn danger" onclick={() => removeFile("fonts", font)}>×</button>
+                                </li>
+                            {:else}
+                                <li class="empty">No fonts</li>
+                            {/each}
+                        </ul>
+                    {/snippet}
+                </AccordionSection>
+            {/snippet}
+        </AccordionGroup>
     {/if}
 </aside>
 
@@ -201,18 +226,25 @@
         display: flex;
         flex-direction: column;
         height: 100%;
-        overflow-y: auto;
+        overflow: hidden;
         padding: 1rem;
-        gap: 1.5rem;
+        gap: 0;
     }
 
     .section {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
+        flex-shrink: 0;
     }
 
-    h2 {
+    .project-info {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #d1d5db;
+    }
+
+    .project-info h2 {
         font-size: 0.85rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -290,9 +322,9 @@
         box-sizing: border-box;
     }
 
-    .header-row {
+    .header-row-inline {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: center;
     }
 
