@@ -80,15 +80,18 @@
     {/if}
 
     {#if mode === "uniform"}
-        <NumberInput {id} value={uniformValue} oninput={handleUniformChange} min={0} step={1} {size} />
+        <div class="labeled-input">
+            <span class="input-label">All</span>
+            <NumberInput {id} value={uniformValue} oninput={handleUniformChange} min={0} step={1} {size} />
+        </div>
     {:else}
         <div class="split-inputs">
-            <div class="input-group">
-                <label for="{id}-x">X</label>
+            <div class="labeled-input">
+                <span class="input-label">X</span>
                 <NumberInput id="{id}-x" value={xValue} oninput={handleXChange} min={0} step={1} {size} />
             </div>
-            <div class="input-group">
-                <label for="{id}-y">Y</label>
+            <div class="labeled-input">
+                <span class="input-label">Y</span>
                 <NumberInput id="{id}-y" value={yValue} oninput={handleYChange} min={0} step={1} {size} />
             </div>
         </div>
@@ -111,12 +114,11 @@
     }
 
     .header-row label {
-        font-size: 0.85rem;
-        font-weight: 600;
+        font-size: 0.8rem;
+        font-weight: 500;
         color: var(--text-primary);
         white-space: nowrap;
         margin: 0;
-        letter-spacing: -0.01em;
     }
 
     .split-inputs {
@@ -124,16 +126,51 @@
         gap: 0.5rem;
     }
 
-    .input-group {
+    .labeled-input {
         flex: 1;
+        position: relative;
         display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
+        align-items: center;
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius-md);
+        background: var(--input-bg);
+        transition: border-color var(--transition-fast);
     }
 
-    .input-group label {
+    .labeled-input:hover {
+        border-color: var(--input-border-hover);
+    }
+
+    .labeled-input:focus-within {
+        border-color: var(--input-border-focus);
+        box-shadow: 0 0 0 3px var(--bg-accent-subtle);
+    }
+
+    .input-label {
+        padding: 0 0.5rem 0 0.75rem;
         font-size: 0.75rem;
         font-weight: 500;
         color: var(--text-secondary);
+        height: 100%;
+        display: flex;
+        align-items: center;
+        user-select: none;
+        flex-shrink: 0;
+    }
+
+    .labeled-input :global(.number-input-wrapper) {
+        flex: 1;
+    }
+
+    .labeled-input :global(.number-input) {
+        border: none;
+        background: transparent;
+        padding-left: 0.5rem;
+        text-align: right;
+    }
+
+    .labeled-input :global(.number-input:focus) {
+        border: none;
+        box-shadow: none;
     }
 </style>
