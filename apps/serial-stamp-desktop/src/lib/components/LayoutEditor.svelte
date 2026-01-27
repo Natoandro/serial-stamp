@@ -1,6 +1,7 @@
 <script lang="ts">
     import { specState } from "$lib/state/spec.svelte";
     import { workspaceState } from "$lib/state/workspace.svelte";
+    import { NumberInput } from "./forms";
 
     function markDirty() {
         workspaceState.isDirty = true;
@@ -44,8 +45,7 @@
     <div class="group">
         <span class="label">Gap</span>
         <div class="inputs">
-            <input
-                type="number"
+            <NumberInput
                 step="0.5"
                 title="Gap X"
                 value={typeof specState.current.layout.gap === "number"
@@ -54,8 +54,7 @@
                 oninput={(e) => setGap(0, Number(e.currentTarget.value))}
             />
             <span class="x">×</span>
-            <input
-                type="number"
+            <NumberInput
                 step="0.5"
                 title="Gap Y"
                 value={typeof specState.current.layout.gap === "number"
@@ -69,8 +68,7 @@
     <div class="group">
         <span class="label">Margins</span>
         <div class="inputs margin-inputs">
-            <input
-                type="number"
+            <NumberInput
                 step="0.5"
                 title="Top"
                 value={Array.isArray(specState.current.layout.margin) && specState.current.layout.margin.length === 4
@@ -78,8 +76,7 @@
                     : 0}
                 oninput={(e) => setMargin4(0, Number(e.currentTarget.value))}
             />
-            <input
-                type="number"
+            <NumberInput
                 step="0.5"
                 title="Right"
                 value={Array.isArray(specState.current.layout.margin) && specState.current.layout.margin.length === 4
@@ -87,8 +84,7 @@
                     : 0}
                 oninput={(e) => setMargin4(1, Number(e.currentTarget.value))}
             />
-            <input
-                type="number"
+            <NumberInput
                 step="0.5"
                 title="Bottom"
                 value={Array.isArray(specState.current.layout.margin) && specState.current.layout.margin.length === 4
@@ -96,8 +92,7 @@
                     : 0}
                 oninput={(e) => setMargin4(2, Number(e.currentTarget.value))}
             />
-            <input
-                type="number"
+            <NumberInput
                 step="0.5"
                 title="Left"
                 value={Array.isArray(specState.current.layout.margin) && specState.current.layout.margin.length === 4
@@ -144,18 +139,8 @@
         color: #9ca3af;
     }
 
-    input {
+    :global(.metrics-bar .number-input) {
         width: 60px;
-        padding: 0.3rem 0.5rem;
-        border: 1px solid #d1d5db;
-        border-radius: 4px;
-        font-size: 0.9rem;
         text-align: center;
-    }
-
-    input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 1px #3b82f6;
     }
 </style>

@@ -2,6 +2,7 @@
     import { specState, type TextSpec } from "$lib/state/spec.svelte";
     import { workspaceState } from "$lib/state/workspace.svelte";
     import { resourceState } from "$lib/state/resources.svelte";
+    import { Input, NumberInput, Select, ColorInput, IconButton } from "./forms";
 
     function markDirty() {
         workspaceState.isDirty = true;
@@ -33,7 +34,7 @@
 </script>
 
 <div class="header-row-inline">
-    <button onclick={addText} class="icon-btn" title="Add Text">+</button>
+    <IconButton onclick={addText} title="Add Text" ariaLabel="Add Text">+</IconButton>
 </div>
 
 {#if specState.current.texts.length === 0}
@@ -44,25 +45,23 @@
             <div class="text-card">
                 <div class="card-header">
                     <h4>#{i + 1}</h4>
-                    <button class="icon-btn danger" onclick={() => removeText(i)}>×</button>
+                    <IconButton variant="danger" onclick={() => removeText(i)} ariaLabel="Remove text">×</IconButton>
                 </div>
 
                 <div class="form-group">
-                    <input
-                        type="text"
+                    <Input
                         placeholder="Template text"
                         value={t.template}
                         oninput={(e) => updateText(i, { template: e.currentTarget.value })}
-                        aria-label="Template text"
+                        ariaLabel="Template text"
                     />
                 </div>
 
                 <div class="row">
                     <div class="form-group half">
                         <label for="text-{i}-x" class="sub-label">X</label>
-                        <input
+                        <NumberInput
                             id="text-{i}-x"
-                            type="number"
                             step="0.5"
                             value={t.position[0]}
                             oninput={(e) => {
@@ -73,9 +72,8 @@
                     </div>
                     <div class="form-group half">
                         <label for="text-{i}-y" class="sub-label">Y</label>
-                        <input
+                        <NumberInput
                             id="text-{i}-y"
-                            type="number"
                             step="0.5"
                             value={t.position[1]}
                             oninput={(e) => {
@@ -88,28 +86,29 @@
 
                 <div class="row">
                     <div class="form-group grow">
-                        <select
+                        <Select
                             value={t.ttf ?? ""}
                             onchange={(e) => {
                                 const v = e.currentTarget.value;
                                 updateText(i, { ttf: v === "" ? undefined : v });
                             }}
-                            aria-label="Font"
+                            ariaLabel="Font"
                         >
-                            <option value="">(Default Font)</option>
-                            {#each resourceState.fonts as font}
-                                <option value={font}>{font.split("/").pop()}</option>
-                            {/each}
-                        </select>
+                            {#snippet children()}
+                                <option value="">(Default Font)</option>
+                                {#each resourceState.fonts as font}
+                                    <option value={font}>{font.split("/").pop()}</option>
+                                {/each}
+                            {/snippet}
+                        </Select>
                     </div>
                     <div class="form-group narrow">
-                        <input
-                            type="number"
-                            min="1"
-                            step="1"
+                        <NumberInput
+                            min={1}
+                            step={1}
                             value={t.size}
                             title="Font Size"
-                            aria-label="Font Size"
+                            ariaLabel="Font Size"
                             oninput={(e) =>
                                 updateText(i, {
                                     size: Math.max(1, Math.trunc(Number(e.currentTarget.value))),
@@ -118,20 +117,11 @@
                     </div>
                 </div>
 
-                <div class="color-row">
-                    <input
-                        type="text"
-                        value={typeof t.color === "string" ? t.color : JSON.stringify(t.color)}
-                        oninput={(e) => updateText(i, { color: e.currentTarget.value })}
-                        aria-label="Color Text"
-                    />
-                    <input
-                        type="color"
-                        value={typeof t.color === "string" && t.color.startsWith("#") ? t.color : "#000000"}
-                        oninput={(e) => updateText(i, { color: e.currentTarget.value })}
-                        aria-label="Color Picker"
-                    />
-                </div>
+                <ColorInput
+                    value={typeof t.color === "string" ? t.color : JSON.stringify(t.color)}
+                    oninput={(e) => updateText(i, { color: e.currentTarget.value })}
+                    ariaLabel="Color"
+                />
             </div>
         {/each}
     </div>
@@ -150,32 +140,6 @@
         font-size: 0.8rem;
         font-weight: 600;
         color: var(--text-tertiary);
-    }
-
-    .icon-btn {
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-        background: none;
-        cursor: pointer;
-        font-weight: bold;
-        color: var(--icon-primary);
-        border-radius: var(--radius-sm);
-        transition: all var(--transition-fast);
-    }
-
-    .icon-btn:hover {
-        background: var(--bg-hover);
-        color: var(--icon-hover);
-    }
-
-    .icon-btn.danger:hover {
-        color: var(--state-error);
-        background: oklch(from var(--state-error) l c h / 0.1);
     }
 
     .empty-state {
@@ -241,52 +205,5 @@
         font-size: 0.7rem;
         color: var(--text-secondary);
         margin-bottom: 2px;
-    }
-
-    input,
-    select {
-        padding: 0.35rem;
-        border: 1px solid var(--input-border);
-        border-radius: var(--radius-sm);
-        font-size: 0.85rem;
-        width: 100%;
-        box-sizing: border-box;
-        background: var(--input-bg);
-        color: var(--input-text);
-        transition: border-color var(--transition-fast);
-    }
-
-    input:hover,
-    select:hover {
-        border-color: var(--input-border-hover);
-    }
-
-    input:focus,
-    select:focus {
-        outline: none;
-        border-color: var(--input-border-focus);
-        box-shadow: 0 0 0 2px var(--bg-accent-subtle);
-    }
-
-    .color-row {
-        display: flex;
-        gap: var(--space-1);
-        align-items: center;
-        width: 100%;
-    }
-
-    .color-row input[type="text"] {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .color-row input[type="color"] {
-        width: 28px;
-        height: 28px;
-        padding: 1px;
-        cursor: pointer;
-        flex-shrink: 0;
-        border: none;
-        background: none;
     }
 </style>

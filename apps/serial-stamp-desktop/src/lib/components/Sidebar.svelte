@@ -5,6 +5,7 @@
     import TextEditor from "./TextEditor.svelte";
     import AccordionGroup from "./AccordionGroup.svelte";
     import AccordionSection from "./AccordionSection.svelte";
+    import { Input, NumberInput, Select, ColorInput, Button, IconButton } from "./forms";
 
     let { newWorkspace } = $props<{ newWorkspace: () => void }>();
 
@@ -52,7 +53,7 @@
                 >
             </div>
         {:else}
-            <button onclick={newWorkspace} class="primary full-width">Create New Project</button>
+            <Button variant="primary" onclick={newWorkspace} class="full-width">Create New Project</Button>
         {/if}
     </div>
 
@@ -74,11 +75,10 @@
                         <div class="row">
                             <div class="form-group half">
                                 <label for="stack-size">Stack Size</label>
-                                <input
+                                <NumberInput
                                     id="stack-size"
-                                    type="number"
-                                    min="1"
-                                    step="1"
+                                    min={1}
+                                    step={1}
                                     value={specState.current["stack-size"]}
                                     oninput={(e) => {
                                         specState.current["stack-size"] = Math.max(
@@ -91,7 +91,7 @@
                             </div>
                             <div class="form-group half">
                                 <label for="source-image">Source Image</label>
-                                <select
+                                <Select
                                     id="source-image"
                                     value={specState.current["source-image"]}
                                     onchange={(e) => {
@@ -99,50 +99,37 @@
                                         markDirty();
                                     }}
                                 >
-                                    <option value="">(None)</option>
-                                    {#each resourceState.images as img}
-                                        <option value={img}>{img}</option>
-                                    {/each}
-                                </select>
+                                    {#snippet children()}
+                                        <option value="">(None)</option>
+                                        {#each resourceState.images as img}
+                                            <option value={img}>{img}</option>
+                                        {/each}
+                                    {/snippet}
+                                </Select>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="bg-color">Background</label>
-                            <div class="color-row">
-                                <input
-                                    id="bg-color"
-                                    type="text"
-                                    value={typeof specState.current.background === "string"
-                                        ? specState.current.background
-                                        : JSON.stringify(specState.current.background)}
-                                    oninput={(e) => {
-                                        specState.current.background = e.currentTarget.value;
-                                        markDirty();
-                                    }}
-                                />
-                                <input
-                                    type="color"
-                                    value={typeof specState.current.background === "string" &&
-                                    specState.current.background.startsWith("#")
-                                        ? specState.current.background
-                                        : "#ffffff"}
-                                    oninput={(e) => {
-                                        specState.current.background = e.currentTarget.value;
-                                        markDirty();
-                                    }}
-                                />
-                            </div>
+                            <ColorInput
+                                id="bg-color"
+                                value={typeof specState.current.background === "string"
+                                    ? specState.current.background
+                                    : JSON.stringify(specState.current.background)}
+                                oninput={(e) => {
+                                    specState.current.background = e.currentTarget.value;
+                                    markDirty();
+                                }}
+                            />
                         </div>
 
                         <div class="form-group">
                             <label for="grid-size-x">Grid Size (X / Y)</label>
                             <div class="row">
-                                <input
+                                <NumberInput
                                     id="grid-size-x"
-                                    type="number"
-                                    min="1"
-                                    step="1"
+                                    min={1}
+                                    step={1}
                                     placeholder="X"
                                     value={specState.current.layout["grid-size"][0]}
                                     oninput={(e) => {
@@ -153,10 +140,9 @@
                                         markDirty();
                                     }}
                                 />
-                                <input
-                                    type="number"
-                                    min="1"
-                                    step="1"
+                                <NumberInput
+                                    min={1}
+                                    step={1}
                                     placeholder="Y"
                                     value={specState.current.layout["grid-size"][1]}
                                     oninput={(e) => {
@@ -181,13 +167,19 @@
                 <AccordionSection title="Images" expanded={isExpanded("images")} onclick={() => toggle("images")}>
                     {#snippet children()}
                         <div class="header-row-inline">
-                            <button class="icon-btn" onclick={importImage} title="Import Image">+</button>
+                            <IconButton onclick={importImage} title="Import Image" ariaLabel="Import Image"
+                                >+</IconButton
+                            >
                         </div>
                         <ul class="resource-list">
                             {#each resourceState.images as img}
                                 <li>
                                     <span class="name" title={img}>{img.split("/").pop()}</span>
-                                    <button class="icon-btn danger" onclick={() => removeFile("images", img)}>×</button>
+                                    <IconButton
+                                        variant="danger"
+                                        onclick={() => removeFile("images", img)}
+                                        ariaLabel="Remove image">×</IconButton
+                                    >
                                 </li>
                             {:else}
                                 <li class="empty">No images</li>
@@ -199,13 +191,17 @@
                 <AccordionSection title="Fonts" expanded={isExpanded("fonts")} onclick={() => toggle("fonts")}>
                     {#snippet children()}
                         <div class="header-row-inline">
-                            <button class="icon-btn" onclick={importFont} title="Import Font">+</button>
+                            <IconButton onclick={importFont} title="Import Font" ariaLabel="Import Font">+</IconButton>
                         </div>
                         <ul class="resource-list">
                             {#each resourceState.fonts as font}
                                 <li>
                                     <span class="name" title={font}>{font.split("/").pop()}</span>
-                                    <button class="icon-btn danger" onclick={() => removeFile("fonts", font)}>×</button>
+                                    <IconButton
+                                        variant="danger"
+                                        onclick={() => removeFile("fonts", font)}
+                                        ariaLabel="Remove font">×</IconButton
+                                    >
                                 </li>
                             {:else}
                                 <li class="empty">No fonts</li>
@@ -287,23 +283,6 @@
         min-width: 0;
     }
 
-    .color-row {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-    }
-
-    .color-row input[type="text"] {
-        flex: 1;
-    }
-
-    .color-row input[type="color"] {
-        width: 34px;
-        height: 34px;
-        padding: 2px;
-        cursor: pointer;
-    }
-
     label {
         font-size: 0.8rem;
         font-weight: 500;
@@ -311,61 +290,10 @@
         white-space: nowrap;
     }
 
-    input,
-    select {
-        padding: 0.4rem;
-        border: 1px solid var(--input-border);
-        border-radius: var(--radius-md);
-        font-size: 0.9rem;
-        background: var(--input-bg);
-        color: var(--input-text);
-        width: 100%;
-        box-sizing: border-box;
-        transition: border-color var(--transition-fast);
-    }
-
-    input:hover,
-    select:hover {
-        border-color: var(--input-border-hover);
-    }
-
-    input:focus,
-    select:focus {
-        outline: none;
-        border-color: var(--input-border-focus);
-        box-shadow: 0 0 0 3px var(--bg-accent-subtle);
-    }
-
     .header-row-inline {
         display: flex;
         justify-content: flex-end;
         align-items: center;
-    }
-
-    .icon-btn {
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-        background: none;
-        cursor: pointer;
-        font-weight: bold;
-        color: var(--icon-primary);
-        border-radius: var(--radius-sm);
-        transition: all var(--transition-fast);
-    }
-
-    .icon-btn:hover {
-        background: var(--bg-hover);
-        color: var(--icon-hover);
-    }
-
-    .icon-btn.danger:hover {
-        color: var(--state-error);
-        background: oklch(from var(--state-error) l c h / 0.1);
     }
 
     .resource-list {
@@ -404,22 +332,7 @@
         max-width: 180px;
     }
 
-    button.primary {
-        background: var(--button-primary-bg);
-        color: var(--button-primary-text);
-        border: none;
-        padding: 0.5rem;
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        font-size: 0.9rem;
-        transition: background-color var(--transition-fast);
-    }
-
-    button.primary:hover {
-        background: var(--button-primary-bg-hover);
-    }
-
-    .full-width {
+    :global(.full-width) {
         width: 100%;
     }
 </style>

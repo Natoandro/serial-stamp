@@ -8,6 +8,7 @@
     import Sidebar from "$lib/components/Sidebar.svelte";
     import LayoutEditor from "$lib/components/LayoutEditor.svelte"; // This is now the Metrics bar
     import PreviewPanel from "$lib/components/PreviewPanel.svelte";
+    import { Button } from "$lib/components/forms";
 
     let creating = false;
     let error: string | null = null;
@@ -59,9 +60,9 @@
             <div class="content">
                 <h1>SerialStamp Desktop</h1>
                 <p>Create a new project or open an existing one to get started.</p>
-                <button class="primary" onclick={newWorkspace} disabled={creating}>
+                <Button variant="primary" onclick={newWorkspace} disabled={creating}>
                     {creating ? "Creating..." : "Create New Project"}
-                </button>
+                </Button>
             </div>
         </div>
     {/if}
@@ -124,24 +125,9 @@
         line-height: 1.5;
     }
 
-    button.primary {
-        background: #2563eb;
-        color: white;
-        border: none;
+    :global(.welcome-screen .button.primary) {
         padding: 0.75rem 1.5rem;
-        border-radius: 6px;
         font-size: 1rem;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    button.primary:hover {
-        background: #1d4ed8;
-    }
-
-    button.primary:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
     }
 
     .error-toast {
