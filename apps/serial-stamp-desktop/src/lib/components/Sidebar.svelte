@@ -5,7 +5,7 @@
     import TextEditor from "./TextEditor.svelte";
     import AccordionGroup from "./AccordionGroup.svelte";
     import AccordionSection from "./AccordionSection.svelte";
-    import { Input, NumberInput, Select, ColorInput, Button, IconButton, GridSizePicker } from "./forms";
+    import { Input, NumberInput, Select, ColorInput, IconButton, GridSizePicker, GapInput, MarginInput } from "./forms";
 
     function markDirty() {
         workspaceState.isDirty = true;
@@ -34,7 +34,7 @@
 
 <aside class="sidebar">
     {#if workspaceState.currentWorkspaceId}
-        <AccordionGroup storageKey="sidebar-accordion" defaultExpanded="global">
+        <AccordionGroup storageKey="sidebar-accordion" defaultExpanded="project">
             {#snippet children({
                 isExpanded,
                 toggle,
@@ -42,47 +42,37 @@
                 isExpanded: (id: string) => boolean;
                 toggle: (id: string) => void;
             })}
-                <AccordionSection
-                    title="Global Settings"
-                    expanded={isExpanded("global")}
-                    onclick={() => toggle("global")}
-                >
+                <AccordionSection title="Project" expanded={isExpanded("project")} onclick={() => toggle("project")}>
                     {#snippet children()}
-                        <div class="row">
-                            <div class="form-group half">
-                                <label for="stack-size">Stack Size</label>
-                                <NumberInput
-                                    id="stack-size"
-                                    min={1}
-                                    step={1}
-                                    value={specState.current["stack-size"]}
-                                    oninput={(e) => {
-                                        specState.current["stack-size"] = Math.max(
-                                            1,
-                                            Math.trunc(Number(e.currentTarget.value)),
-                                        );
-                                        markDirty();
-                                    }}
-                                />
-                            </div>
-                            <div class="form-group half">
-                                <label for="source-image">Source Image</label>
-                                <Select
-                                    id="source-image"
-                                    value={specState.current["source-image"]}
-                                    onchange={(e) => {
-                                        specState.current["source-image"] = e.currentTarget.value;
-                                        markDirty();
-                                    }}
-                                >
-                                    {#snippet children()}
-                                        <option value="">(None)</option>
-                                        {#each resourceState.images as img}
-                                            <option value={img}>{img}</option>
-                                        {/each}
-                                    {/snippet}
-                                </Select>
-                            </div>
+                        <div class="form-group">
+                            <label for="project-name">Project Name</label>
+                            <Input
+                                id="project-name"
+                                value={specState.current.projectName ?? "Untitled Project"}
+                                oninput={(e) => {
+                                    specState.current.projectName = e.currentTarget.value;
+                                    markDirty();
+                                }}
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="source-image">Source Image</label>
+                            <Select
+                                id="source-image"
+                                value={specState.current["source-image"]}
+                                onchange={(e) => {
+                                    specState.current["source-image"] = e.currentTarget.value;
+                                    markDirty();
+                                }}
+                            >
+                                {#snippet children()}
+                                    <option value="">(None)</option>
+                                    {#each resourceState.images as img}
+                                        <option value={img}>{img}</option>
+                                    {/each}
+                                {/snippet}
+                            </Select>
                         </div>
 
                         <div class="form-group">
@@ -98,7 +88,11 @@
                                 }}
                             />
                         </div>
+                    {/snippet}
+                </AccordionSection>
 
+                <AccordionSection title="Page Layout" expanded={isExpanded("layout")} onclick={() => toggle("layout")}>
+                    {#snippet children()}
                         <div class="form-group">
                             <label for="grid-size">Grid Size</label>
                             <GridSizePicker
@@ -109,12 +103,78 @@
                                 }}
                             />
                         </div>
+
+                        <div class="form-group">
+                            <GapInput
+                                id="gap"
+                                label="Gap"
+                                value={specState.current.layout.gap}
+                                oninput={(value) => {
+                                    specState.current.layout.gap = value;
+                                    markDirty();
+                                }}
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <MarginInput
+                                id="margin"
+                                label="Margin"
+                                value={specState.current.layout.margin}
+                                oninput={(value) => {
+                                    specState.current.layout.margin = value;
+                                    markDirty();
+                                }}
+                            />
+                        </div>
+                    {/snippet}
+                </AccordionSection>
+
+                <AccordionSection
+                    title="Output Settings"
+                    expanded={isExpanded("output")}
+                    onclick={() => toggle("output")}
+                >
+                    {#snippet children()}
+                        <div class="form-group">
+                            <label for="stack-size">Stack Size</label>
+                            <NumberInput
+                                id="stack-size"
+                                min={1}
+                                step={1}
+                                value={specState.current["stack-size"]}
+                                oninput={(e) => {
+                                    specState.current["stack-size"] = Math.max(
+                                        1,
+                                        Math.trunc(Number(e.currentTarget.value)),
+                                    );
+                                    markDirty();
+                                }}
+                            />
+                        </div>
                     {/snippet}
                 </AccordionSection>
 
                 <AccordionSection title="Texts" expanded={isExpanded("texts")} onclick={() => toggle("texts")}>
                     {#snippet children()}
                         <TextEditor />
+                    {/snippet}
+                </AccordionSection>
+
+                <AccordionSection title="Parameters" expanded={isExpanded("params")} onclick={() => toggle("params")}>
+                    {#snippet children()}
+                        {#if specState.current.params && specState.current.params.length > 0}
+                            <ul class="params-list">
+                                {#each specState.current.params as param}
+                                    <li>
+                                        <span class="param-name">{param.name}</span>
+                                        <span class="param-type">{param.type}</span>
+                                    </li>
+                                {/each}
+                            </ul>
+                        {:else}
+                            <p class="empty-message">No parameters defined</p>
+                        {/if}
                     {/snippet}
                 </AccordionSection>
 
@@ -187,16 +247,6 @@
         gap: 0.25rem;
     }
 
-    .row {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .half {
-        flex: 1;
-        min-width: 0;
-    }
-
     label {
         font-size: 0.8rem;
         font-weight: 500;
@@ -244,5 +294,48 @@
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 180px;
+    }
+
+    .params-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .params-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .params-list li:last-child {
+        border-bottom: none;
+    }
+
+    .param-name {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .param-type {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .empty-message {
+        color: var(--text-tertiary);
+        font-style: italic;
+        text-align: center;
+        padding: 1rem;
+        margin: 0;
+        font-size: 0.85rem;
     }
 </style>

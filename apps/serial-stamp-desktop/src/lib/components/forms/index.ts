@@ -7,3 +7,6 @@ export { default as IconButton } from "./IconButton.svelte";
 export { default as Switch } from "./Switch.svelte";
 export { default as GridSizeSelector } from "./GridSizeSelector.svelte";
 export { default as GridSizePicker } from "./GridSizePicker.svelte";
+export { default as GapInput } from "./GapInput.svelte";
+export { default as MarginInput } from "./MarginInput.svelte";
+export { default as SegmentedControl } from "./SegmentedControl.svelte";
