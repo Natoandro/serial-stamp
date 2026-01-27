@@ -6,8 +6,7 @@
 
     import AppLayout from "$lib/components/AppLayout.svelte";
     import Sidebar from "$lib/components/Sidebar.svelte";
-    import LayoutEditor from "$lib/components/LayoutEditor.svelte";
-    import TextEditor from "$lib/components/TextEditor.svelte";
+    import LayoutEditor from "$lib/components/LayoutEditor.svelte"; // This is now the Metrics bar
     import PreviewPanel from "$lib/components/PreviewPanel.svelte";
 
     let creating = false;
@@ -41,15 +40,20 @@
     }
 </script>
 
-<AppLayout>
-    {#snippet sidebar()}
-        <Sidebar {newWorkspace} />
-    {/snippet}
+{#snippet sidebarContent()}
+    <Sidebar {newWorkspace} />
+{/snippet}
 
+<AppLayout sidebar={sidebarContent}>
     {#if workspaceState.currentWorkspaceId}
-        <PreviewPanel />
-        <LayoutEditor />
-        <TextEditor />
+        <div class="workspace-layout">
+            <div class="preview-area">
+                <PreviewPanel />
+            </div>
+            <div class="metrics-area">
+                <LayoutEditor />
+            </div>
+        </div>
     {:else}
         <div class="welcome-screen">
             <div class="content">
@@ -72,12 +76,36 @@
 </AppLayout>
 
 <style>
+    .workspace-layout {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        background: #f3f4f6;
+        overflow: hidden;
+    }
+
+    .preview-area {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .metrics-area {
+        flex-shrink: 0;
+        width: 100%;
+    }
+
     .welcome-screen {
         display: flex;
         align-items: center;
         justify-content: center;
         height: 100%;
         color: #4b5563;
+        background: #f9fafb;
     }
 
     .content {

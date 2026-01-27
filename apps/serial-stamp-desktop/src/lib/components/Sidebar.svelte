@@ -2,6 +2,7 @@
     import { workspaceState } from "$lib/state/workspace.svelte";
     import { resourceState } from "$lib/state/resources.svelte";
     import { specState } from "$lib/state/spec.svelte";
+    import TextEditor from "./TextEditor.svelte";
 
     let { newWorkspace } = $props<{ newWorkspace: () => void }>();
 
@@ -56,20 +57,40 @@
     {#if workspaceState.currentWorkspaceId}
         <div class="section">
             <h2>Global Settings</h2>
-            <div class="form-group">
-                <label for="stack-size">Stack Size</label>
-                <input
-                    id="stack-size"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={specState.current["stack-size"]}
-                    oninput={(e) => {
-                        specState.current["stack-size"] = Math.max(1, Math.trunc(Number(e.currentTarget.value)));
-                        markDirty();
-                    }}
-                />
+
+            <div class="row">
+                <div class="form-group half">
+                    <label for="stack-size">Stack Size</label>
+                    <input
+                        id="stack-size"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={specState.current["stack-size"]}
+                        oninput={(e) => {
+                            specState.current["stack-size"] = Math.max(1, Math.trunc(Number(e.currentTarget.value)));
+                            markDirty();
+                        }}
+                    />
+                </div>
+                <div class="form-group half">
+                    <label for="source-image">Source Image</label>
+                    <select
+                        id="source-image"
+                        value={specState.current["source-image"]}
+                        onchange={(e) => {
+                            specState.current["source-image"] = e.currentTarget.value;
+                            markDirty();
+                        }}
+                    >
+                        <option value="">(None)</option>
+                        {#each resourceState.images as img}
+                            <option value={img}>{img}</option>
+                        {/each}
+                    </select>
+                </div>
             </div>
+
             <div class="form-group">
                 <label for="bg-color">Background</label>
                 <div class="color-row">
@@ -97,23 +118,44 @@
                     />
                 </div>
             </div>
+
             <div class="form-group">
-                <label for="source-image">Source Image</label>
-                <select
-                    id="source-image"
-                    value={specState.current["source-image"]}
-                    onchange={(e) => {
-                        specState.current["source-image"] = e.currentTarget.value;
-                        markDirty();
-                    }}
-                >
-                    <option value="">(None)</option>
-                    {#each resourceState.images as img}
-                        <option value={img}>{img}</option>
-                    {/each}
-                </select>
+                <label for="grid-size-x">Grid Size (X / Y)</label>
+                <div class="row">
+                    <input
+                        id="grid-size-x"
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="X"
+                        value={specState.current.layout["grid-size"][0]}
+                        oninput={(e) => {
+                            specState.current.layout["grid-size"][0] = Math.max(
+                                1,
+                                Math.trunc(Number(e.currentTarget.value)),
+                            );
+                            markDirty();
+                        }}
+                    />
+                    <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="Y"
+                        value={specState.current.layout["grid-size"][1]}
+                        oninput={(e) => {
+                            specState.current.layout["grid-size"][1] = Math.max(
+                                1,
+                                Math.trunc(Number(e.currentTarget.value)),
+                            );
+                            markDirty();
+                        }}
+                    />
+                </div>
             </div>
         </div>
+
+        <TextEditor />
 
         <div class="section resources">
             <div class="header-row">
@@ -153,7 +195,7 @@
 
 <style>
     .sidebar {
-        width: 280px;
+        width: 320px;
         background: #f3f4f6;
         border-right: 1px solid #e5e7eb;
         display: flex;
@@ -203,6 +245,16 @@
         gap: 0.25rem;
     }
 
+    .row {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .half {
+        flex: 1;
+        min-width: 0;
+    }
+
     .color-row {
         display: flex;
         gap: 0.5rem;
@@ -224,6 +276,7 @@
         font-size: 0.8rem;
         font-weight: 500;
         color: #374151;
+        white-space: nowrap;
     }
 
     input,
@@ -233,6 +286,8 @@
         border-radius: 6px;
         font-size: 0.9rem;
         background: white;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .header-row {

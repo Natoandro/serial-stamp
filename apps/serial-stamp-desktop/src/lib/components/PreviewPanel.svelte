@@ -75,12 +75,16 @@
         display: flex;
         flex-direction: column;
         gap: 1rem;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
     }
 
     .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-shrink: 0;
     }
 
     h3 {
@@ -112,8 +116,10 @@
     }
 
     .preview-area {
-        min-height: 200px;
-        background: #f9fafb; /* checkered background usually better but keep simple */
+        flex-grow: 1;
+        min-height: 0; /* Allow shrinking if needed */
+        width: 100%;
+        background: #f9fafb;
         border: 1px dashed #d1d5db;
         border-radius: 6px;
         display: flex;
@@ -131,11 +137,13 @@
         justify-content: center;
         padding: 1rem;
         box-sizing: border-box;
+        overflow: auto;
     }
 
     img {
         max-width: 100%;
-        max-height: 400px;
+        max-height: 100%;
+        object-fit: contain;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         border: 1px solid #e5e7eb;
     }
@@ -168,7 +176,6 @@
         overflow-wrap: anywhere;
     }
 
-    /* Simple spinner */
     .spinner {
         width: 24px;
         height: 24px;

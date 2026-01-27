@@ -12,9 +12,7 @@
         {@render sidebar()}
     </div>
     <main class="main-content">
-        <div class="main-inner">
-            {@render children()}
-        </div>
+        {@render children()}
     </main>
 </div>
 
@@ -24,28 +22,24 @@
         width: 100%;
         height: 100vh;
         overflow: hidden;
-        background: #f9fafb;
+        background: #fff;
     }
 
     .sidebar-wrapper {
         flex-shrink: 0;
         height: 100%;
         z-index: 10;
+        display: flex;
+        border-right: 1px solid #e5e7eb;
     }
 
     .main-content {
-        flex-grow: 1;
+        flex: 1; /* Robustly fill remaining space */
         height: 100%;
-        overflow-y: auto;
-        position: relative;
-    }
-
-    .main-inner {
-        padding: 2rem;
-        max-width: 1000px;
-        margin: 0 auto;
+        min-width: 0; /* Prevent flex blowouts */
         display: flex;
         flex-direction: column;
-        gap: 2rem;
+        position: relative;
+        overflow: hidden;
     }
 </style>
