@@ -88,8 +88,7 @@
                     <div class="form-group grow">
                         <Select
                             value={t.ttf ?? ""}
-                            onchange={(e) => {
-                                const v = e.currentTarget.value;
+                            onchange={(v) => {
                                 updateText(i, { ttf: v === "" ? undefined : v });
                             }}
                             ariaLabel="Font"

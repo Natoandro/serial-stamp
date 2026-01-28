@@ -61,8 +61,8 @@
                             <Select
                                 id="source-image"
                                 value={specState.current["source-image"]}
-                                onchange={(e) => {
-                                    specState.current["source-image"] = e.currentTarget.value;
+                                onchange={(v) => {
+                                    specState.current["source-image"] = v;
                                     markDirty();
                                 }}
                             >
