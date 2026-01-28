@@ -7,6 +7,8 @@
     import AccordionSection from "./AccordionSection.svelte";
     import { Input, NumberInput, Select, ColorInput, IconButton, GridSizePicker, GapInput, MarginInput } from "./forms";
 
+    let isImportingImage = $state(false);
+
     function markDirty() {
         workspaceState.isDirty = true;
     }
@@ -14,6 +16,21 @@
     async function importImage() {
         if (workspaceState.currentWorkspaceId) {
             await resourceState.importImage(workspaceState.currentWorkspaceId);
+        }
+    }
+
+    async function browseAndSelectImage() {
+        if (workspaceState.currentWorkspaceId) {
+            isImportingImage = true;
+            try {
+                const importedPath = await resourceState.importImage(workspaceState.currentWorkspaceId);
+                if (importedPath) {
+                    specState.current["source-image"] = importedPath;
+                    markDirty();
+                }
+            } finally {
+                isImportingImage = false;
+            }
         }
     }
 
@@ -49,6 +66,7 @@
                             <Input
                                 id="project-name"
                                 value={specState.current.projectName ?? "Untitled Project"}
+                                disabled={isImportingImage}
                                 oninput={(e) => {
                                     specState.current.projectName = e.currentTarget.value;
                                     markDirty();
@@ -61,18 +79,26 @@
                             <Select
                                 id="source-image"
                                 value={specState.current["source-image"]}
+                                disabled={isImportingImage}
+                                options={[
+                                    { value: "", label: "(None)" },
+                                    ...resourceState.images.map((img) => ({
+                                        value: img,
+                                        label: img.split("/").pop() || img,
+                                    })),
+                                ]}
+                                actionOptions={[
+                                    {
+                                        label: isImportingImage ? "Loading..." : "Browse...",
+                                        action: browseAndSelectImage,
+                                        disabled: isImportingImage,
+                                    },
+                                ]}
                                 onchange={(v) => {
                                     specState.current["source-image"] = v;
                                     markDirty();
                                 }}
-                            >
-                                {#snippet children()}
-                                    <option value="">(None)</option>
-                                    {#each resourceState.images as img}
-                                        <option value={img}>{img}</option>
-                                    {/each}
-                                {/snippet}
-                            </Select>
+                            />
                         </div>
 
                         <div class="form-group">
@@ -82,6 +108,7 @@
                                 value={typeof specState.current.background === "string"
                                     ? specState.current.background
                                     : JSON.stringify(specState.current.background)}
+                                disabled={isImportingImage}
                                 oninput={(e) => {
                                     specState.current.background = e.currentTarget.value;
                                     markDirty();

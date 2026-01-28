@@ -8,9 +8,16 @@
         disabled?: boolean;
     }
 
+    interface ActionOption {
+        label: string;
+        action: () => void | Promise<void>;
+        disabled?: boolean;
+    }
+
     interface Props {
         value: string;
         options?: Option[];
+        actionOptions?: ActionOption[];
         onchange?: (value: string) => void;
         id?: string;
         disabled?: boolean;
@@ -25,6 +32,7 @@
     let {
         value = $bindable(""),
         options = [],
+        actionOptions = [],
         onchange,
         id,
         disabled = false,
@@ -88,6 +96,12 @@
         value = option.value;
         onchange?.(option.value);
         closePopover();
+    }
+
+    async function executeAction(actionOption: ActionOption) {
+        if (actionOption.disabled) return;
+        closePopover();
+        await actionOption.action();
     }
 
     function handleKeydown(e: KeyboardEvent) {
@@ -191,6 +205,16 @@
 
     {#if isOpen}
         <div bind:this={popoverRef} class="popover" role="listbox">
+            {#each actionOptions as actionOption}
+                <button
+                    type="button"
+                    class="option action-option"
+                    disabled={actionOption.disabled}
+                    onclick={() => executeAction(actionOption)}
+                >
+                    {actionOption.label}
+                </button>
+            {/each}
             {#each availableOptions as option, index (option.value)}
                 <button
                     type="button"
@@ -351,5 +375,10 @@
 
     .option:focus {
         outline: none;
+    }
+
+    .option.action-option {
+        font-weight: 500;
+        border-bottom: 1px solid var(--border-subtle);
     }
 </style>
