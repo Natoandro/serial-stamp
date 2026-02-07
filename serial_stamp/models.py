@@ -70,10 +70,12 @@ class Text(BaseModel):
 
 
 class IntParam(BaseModel):
+    model_config = {"populate_by_name": True}
+
     name: str
     type: Literal["int", "integer"] = "integer"
     values: list[int]
-    leading_zeros: int | None = None
+    leading_zeros: int | None = Field(default=None, alias="leading-zeros")
 
     @property
     def value_count(self):
@@ -116,11 +118,13 @@ class StringArrayParam(BaseModel):
 
 
 class IntRangeParam(BaseModel):
+    model_config = {"populate_by_name": True}
+
     name: str
     type: Literal["int", "integer"] = "integer"
     min: int
     max: int
-    leading_zeros: int | None = None
+    leading_zeros: int | None = Field(default=None, alias="leading-zeros")
 
     @property
     def value_count(self):
