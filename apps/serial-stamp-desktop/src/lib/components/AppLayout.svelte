@@ -1,16 +1,23 @@
 <script lang="ts">
     import type { Snippet } from "svelte";
 
-    let { sidebar, children } = $props<{
+    let {
+        sidebar,
+        children,
+        showSidebar = true,
+    } = $props<{
         sidebar: Snippet;
         children: Snippet;
+        showSidebar?: boolean;
     }>();
 </script>
 
 <div class="app-layout">
-    <div class="sidebar-wrapper">
-        {@render sidebar()}
-    </div>
+    {#if showSidebar}
+        <div class="sidebar-wrapper">
+            {@render sidebar()}
+        </div>
+    {/if}
     <main class="main-content">
         {@render children()}
     </main>

@@ -44,7 +44,7 @@
     <Sidebar />
 {/snippet}
 
-<AppLayout sidebar={sidebarContent}>
+<AppLayout sidebar={sidebarContent} showSidebar={!!workspaceState.currentWorkspaceId}>
     {#if workspaceState.currentWorkspaceId}
         <div class="workspace-layout">
             <PreviewPanel />
